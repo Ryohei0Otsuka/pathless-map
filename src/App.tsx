@@ -175,13 +175,6 @@ const NODE_TEMPLATES: NodeTemplate[] = [
     icon: 'PC',
   },
   {
-    kind: 'service',
-    title: '一般サービス',
-    action: '移動',
-    description: 'Slack / SharePoint など',
-    icon: 'SV',
-  },
-  {
     kind: 'operation',
     title: '工程',
     action: '加工',
@@ -201,6 +194,13 @@ const NODE_TEMPLATES: NodeTemplate[] = [
     action: '分岐',
     description: 'ルートが分かれる地点',
     icon: 'Y',
+  },
+  {
+    kind: 'service',
+    title: '一般サービス',
+    action: '移動',
+    description: 'Slack / SharePoint など',
+    icon: 'SV',
   },
   {
     kind: 'storage',
@@ -243,9 +243,10 @@ function createStarterFile(label: string): FileRoute {
   const prefix = createId('flow');
 
   const sourceId = `${prefix}-source`;
-  const serviceId = `${prefix}-service`;
+  const deviceId = `${prefix}-device`;
   const operationId = `${prefix}-operation`;
-  const splitId = `${prefix}-split`;
+  const toolId = `${prefix}-tool`;
+  const serviceId = `${prefix}-service`;
   const storageId = `${prefix}-storage`;
 
   return {
@@ -264,14 +265,14 @@ function createStarterFile(label: string): FileRoute {
         },
       },
       {
-        id: serviceId,
+        id: deviceId,
         type: 'routeCard',
         position: { x: 270, y: 100 },
         data: {
-          label: '一般サービスA',
-          kind: 'service',
+          label: '端末A',
+          kind: 'device',
           action: '移動',
-          memo: 'Slack / SharePoint など。実チャンネル名や実URLは入れない。',
+          memo: '作業する端末・場所。実端末名や実パスは入れない。',
         },
       },
       {
@@ -286,20 +287,31 @@ function createStarterFile(label: string): FileRoute {
         },
       },
       {
-        id: splitId,
+        id: toolId,
         type: 'routeCard',
         position: { x: 770, y: 100 },
         data: {
-          label: '分岐地点',
-          kind: 'split',
-          action: '分岐',
-          memo: 'ファイルの行き先が分かれる地点。',
+          label: 'ツールA',
+          kind: 'tool',
+          action: 'ツール使用',
+          memo: '処理に使うツール。実ツール名が機密の場合は抽象化する。',
+        },
+      },
+      {
+        id: serviceId,
+        type: 'routeCard',
+        position: { x: 1020, y: 100 },
+        data: {
+          label: '一般サービスA',
+          kind: 'service',
+          action: '移動',
+          memo: 'Slack / SharePoint など。格納・共有に近い経由先として扱う。',
         },
       },
       {
         id: storageId,
         type: 'routeCard',
-        position: { x: 1020, y: 100 },
+        position: { x: 1270, y: 100 },
         data: {
           label: '格納先Y',
           kind: 'storage',
@@ -309,10 +321,11 @@ function createStarterFile(label: string): FileRoute {
       },
     ],
     edges: [
-      createEdge(sourceId, serviceId, '取得'),
-      createEdge(serviceId, operationId, '移動'),
-      createEdge(operationId, splitId, '加工'),
-      createEdge(splitId, storageId, '格納'),
+      createEdge(sourceId, deviceId, '取得'),
+      createEdge(deviceId, operationId, '移動'),
+      createEdge(operationId, toolId, '加工'),
+      createEdge(toolId, serviceId, 'ツール使用'),
+      createEdge(serviceId, storageId, '格納'),
     ],
   };
 }
@@ -949,6 +962,7 @@ function App() {
         };
       }),
     }));
+;
   };
 
   const connectNodes = (sourceId: string, targetId: string, label: string) => {
@@ -1089,7 +1103,7 @@ function App() {
       return;
     }
 
-    const template = NODE_TEMPLATES.find((item) => item.kind === insertKind) ?? NODE_TEMPLATES[3];
+    const template = NODE_TEMPLATES.find((item) => item.kind === insertKind) ?? NODE_TEMPLATES[2];
     const sourceNode = nodes.find((node) => node.id === selectedEdge.source);
     const targetNode = nodes.find((node) => node.id === selectedEdge.target);
 
