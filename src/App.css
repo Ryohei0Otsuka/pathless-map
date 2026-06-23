@@ -865,18 +865,17 @@
   line-height: 1.6;
 }
 
-/* 注意喚起モーダル：PCは中央、SPは縦長カード */
+/* 注意喚起モーダル：PC/SPとも中央寄せの縦長カード */
 .notice-backdrop {
   position: fixed;
   z-index: 9999;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  padding: 18px;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 16px;
   overflow: hidden;
   background: rgba(18, 38, 35, 0.42);
   backdrop-filter: blur(4px);
@@ -884,8 +883,8 @@
 }
 
 .notice-card {
-  width: min(560px, calc(100vw - 36px));
-  max-height: calc(100dvh - 36px);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100svh - 32px);
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -1081,23 +1080,22 @@
   }
 
   .notice-backdrop {
-    align-items: flex-end;
-    justify-content: center;
+    place-items: center;
     padding: 14px;
     padding-top: max(14px, env(safe-area-inset-top));
     padding-bottom: max(14px, env(safe-area-inset-bottom));
   }
 
   .notice-card {
-    width: min(390px, calc(100vw - 28px));
-    max-height: 82dvh;
+    width: min(360px, calc(100vw - 28px));
+    max-height: calc(100svh - 28px);
     margin: 0 auto;
     padding: 18px;
     border-radius: 24px;
   }
 
   .notice-card h1 {
-    font-size: 1.34rem;
+    font-size: 1.32rem;
     line-height: 1.25;
   }
 
@@ -1113,8 +1111,8 @@
   }
 
   .notice-card .primary-button {
-    position: sticky;
-    bottom: -2px;
-    box-shadow: 0 -8px 18px rgba(255, 255, 255, 0.9);
+    position: static;
+    width: 100%;
+    margin-top: 14px;
   }
 }
