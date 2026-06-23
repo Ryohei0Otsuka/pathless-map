@@ -865,19 +865,27 @@
   line-height: 1.6;
 }
 
+/* SPでも必ず注意喚起カードが見えるように修正 */
 .notice-backdrop {
   position: fixed;
-  z-index: 50;
+  z-index: 9999;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 18px;
-  background: rgba(18, 38, 35, 0.48);
-  backdrop-filter: blur(10px);
+  overflow-y: auto;
+  background: rgba(18, 38, 35, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .notice-card {
   width: min(560px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 24px;
   border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 30px;
@@ -1067,5 +1075,18 @@
   .storage-actions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .notice-backdrop {
+    align-items: flex-start;
+    padding: 12px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .notice-card {
+    max-height: calc(100dvh - 24px);
+    padding: 20px;
+    border-radius: 24px;
   }
 }
