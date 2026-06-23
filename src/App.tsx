@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Background,
   Controls,
@@ -96,8 +96,8 @@ type ConnectMode = {
   label: string;
 };
 
-const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v3';
-const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v3';
+const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v4';
+const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v4';
 
 const ACTIONS: ActionKind[] = [
   '取得',
@@ -312,13 +312,10 @@ function createTask(title: string): TaskMap {
   };
 }
 
-function RouteNode(props: NodeProps) {
-  const data = props.data as FlowNodeData;
-  const selected = props.selected;
-
+function RouteNode({ data, selected }: NodeProps<FlowNode>) {
   return (
     <div className={`route-node route-node--${data.kind} ${selected ? 'is-selected' : ''}`}>
-      <Handle type="target" position={Position.Left} className="route-handle" />
+      <Handle type="target" position={Position.Left} className="route-handle route-handle--target" />
 
       <div className="route-node__top">
         <span>{NODE_KIND_LABELS[data.kind]}</span>
@@ -337,7 +334,7 @@ function RouteNode(props: NodeProps) {
 
       {data.memo && <p>{data.memo}</p>}
 
-      <Handle type="source" position={Position.Right} className="route-handle" />
+      <Handle type="source" position={Position.Right} className="route-handle route-handle--source" />
     </div>
   );
 }
@@ -378,7 +375,7 @@ function RouteEdge(props: EdgeProps) {
       <path
         id={pathId}
         d={edgePath}
-        className={`route-edge-path ${selected ? 'is-selected' : ''}`}
+        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''}`}
         markerEnd={markerEnd}
       />
 
@@ -529,6 +526,14 @@ function App() {
     [edges, selectedEdgeId],
   );
 
+  const selectedNodeOutgoingCount = selectedNode
+    ? edges.filter((edge) => edge.source === selectedNode.id).length
+    : 0;
+
+  const selectedNodeCanStartRoute =
+    !!selectedNode &&
+    (selectedNode.data.kind === 'split' || selectedNodeOutgoingCount === 0);
+
   const securityWarnings = useMemo(() => {
     const values = tasks.flatMap((task) => [
       task.title,
@@ -553,6 +558,21 @@ function App() {
   }, [tasks]);
 
   const hasSecurityWarnings = securityWarnings.length > 0;
+
+  const canCreateOutgoingFrom = (sourceId: string) => {
+    const sourceNode = nodes.find((node) => node.id === sourceId);
+
+    if (!sourceNode) {
+      return false;
+    }
+
+    if (sourceNode.data.kind === 'split') {
+      return true;
+    }
+
+    const outgoingCount = edges.filter((edge) => edge.source === sourceId).length;
+    return outgoingCount === 0;
+  };
 
   const updateActiveTask = (patch: Partial<TaskMap>) => {
     setTasks((currentTasks) =>
@@ -731,39 +751,54 @@ function App() {
     );
   };
 
-  const onNodesChange = useCallback(
-    (changes: NodeChange<FlowNode>[]) => {
-      updateActiveFile((file) => ({
-        ...file,
-        nodes: applyNodeChanges(changes, file.nodes),
-      }));
-    },
-    [activeTaskId],
-  );
+  const onNodesChange = (changes: NodeChange<FlowNode>[]) => {
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: applyNodeChanges(changes, file.nodes),
+    }));
+  };
 
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange<FlowEdge>[]) => {
-      updateActiveFile((file) => ({
-        ...file,
-        edges: applyEdgeChanges(changes, file.edges),
-      }));
-    },
-    [activeTaskId],
-  );
+  const onEdgesChange = (changes: EdgeChange<FlowEdge>[]) => {
+    updateActiveFile((file) => ({
+      ...file,
+      edges: applyEdgeChanges(changes, file.edges),
+    }));
+  };
 
-  const onConnect: OnConnect = useCallback(
-    (connection: Connection) => {
-      if (!connection.source || !connection.target) {
-        return;
-      }
+  const onConnect: OnConnect = (connection: Connection) => {
+    const sourceId = connection.source;
+    const targetId = connection.target;
 
-      updateActiveFile((file) => ({
-        ...file,
-        edges: addEdge(createEdge(connection.source!, connection.target!, '移動'), file.edges),
-      }));
-    },
-    [activeTaskId],
-  );
+    if (!sourceId || !targetId) {
+      return;
+    }
+
+    if (sourceId === targetId) {
+      setStatusMessage('同じパーツ同士は接続できません。');
+      return;
+    }
+
+    if (!canCreateOutgoingFrom(sourceId)) {
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
+      return;
+    }
+
+    const alreadyConnected = edges.some(
+      (edge) => edge.source === sourceId && edge.target === targetId,
+    );
+
+    if (alreadyConnected) {
+      setStatusMessage('そのパーツ同士はすでに接続されています。');
+      return;
+    }
+
+    updateActiveFile((file) => ({
+      ...file,
+      edges: addEdge(createEdge(sourceId, targetId, '移動'), file.edges),
+    }));
+
+    setStatusMessage('導線を追加しました。');
+  };
 
   const addNode = (template: NodeTemplate) => {
     const newNode: FlowNode = {
@@ -837,6 +872,22 @@ function App() {
       return;
     }
 
+    if (!canCreateOutgoingFrom(sourceId)) {
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
+      setConnectMode(null);
+      return;
+    }
+
+    const alreadyConnected = edges.some(
+      (edge) => edge.source === sourceId && edge.target === targetId,
+    );
+
+    if (alreadyConnected) {
+      setStatusMessage('そのパーツ同士はすでに接続されています。');
+      setConnectMode(null);
+      return;
+    }
+
     updateActiveFile((file) => ({
       ...file,
       edges: [...file.edges, createEdge(sourceId, targetId, label)],
@@ -850,6 +901,11 @@ function App() {
 
   const addSplitRoute = (routeLabel: 'ルートA' | 'ルートB' | '戻し' | '保留') => {
     if (!selectedNode) {
+      return;
+    }
+
+    if (selectedNode.data.kind !== 'split') {
+      setStatusMessage('複数ルートを作る場合は「分岐」パーツを選んでください。');
       return;
     }
 
@@ -946,7 +1002,7 @@ function App() {
     }
   };
 
-  const saveDraft = useCallback(() => {
+  const saveDraft = () => {
     if (saveMode === 'off') {
       setStatusMessage('保存OFF：保存する場合は「一時保存」か「端末保存」を選んでください。');
       return;
@@ -975,7 +1031,7 @@ function App() {
         ? '一時保存しました。ブラウザを閉じると消える可能性があります。'
         : 'この端末に保存しました。共有端末では使わないでください。',
     );
-  }, [activeTaskId, hasSecurityWarnings, saveMode, tasks]);
+  };
 
   const loadDraft = () => {
     if (saveMode === 'off') {
@@ -1235,7 +1291,7 @@ function App() {
             <div>
               <strong>Route Canvas</strong>
               <span>
-                ファイルが流れる経路を作る。PCは接続点ドラッグ、スマホは「次につなぐ」。
+                通常パーツは導線1本。複数ルートは「分岐」パーツから作成。
               </span>
             </div>
 
@@ -1373,6 +1429,7 @@ function App() {
 
               <div className="node-actions">
                 <button
+                  disabled={!selectedNodeCanStartRoute}
                   onClick={() =>
                     setConnectMode({
                       sourceId: selectedNode.id,
@@ -1385,6 +1442,12 @@ function App() {
                 >
                   次につなぐ
                 </button>
+
+                {!selectedNodeCanStartRoute && (
+                  <p className="route-rule-message">
+                    このパーツはすでに次の導線があります。複数ルートにしたい場合は「分岐」パーツを使ってください。
+                  </p>
+                )}
               </div>
 
               {selectedNode.data.kind === 'split' && (
