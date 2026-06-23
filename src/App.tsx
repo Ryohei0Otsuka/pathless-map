@@ -1544,34 +1544,6 @@ function App() {
         </div>
       )}
 
-      {editModalOpen && (selectedNode || selectedEdge) && (
-        <div
-          className="edit-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setEditModalOpen(false)}
-        >
-          <section className="edit-modal-card" onClick={(event) => event.stopPropagation()}>
-            <div className="edit-modal-heading">
-              <div>
-                <p>Edit</p>
-                <h2>{selectedNode ? 'パーツを編集' : '導線を編集'}</h2>
-              </div>
-              <button
-                className="modal-close-button"
-                onClick={() => setEditModalOpen(false)}
-                aria-label="編集を閉じる"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="edit-modal-body">
-              {selectedNode ? renderNodeEditForm() : renderEdgeEditForm()}
-            </div>
-          </section>
-        </div>
-      )}
 
       <header className="hero">
         <div>
@@ -1794,6 +1766,36 @@ function App() {
               <MiniMap pannable zoomable nodeStrokeWidth={3} position="bottom-right" />
             </ReactFlow>
           </div>
+
+            {editModalOpen && (selectedNode || selectedEdge) && (
+              <div
+                className="edit-modal-backdrop"
+                role="dialog"
+                aria-modal="true"
+                onClick={() => setEditModalOpen(false)}
+              >
+                <section className="edit-modal-card" onClick={(event) => event.stopPropagation()}>
+                  <div className="edit-modal-heading">
+                    <div>
+                      <p>Edit</p>
+                      <h2>{selectedNode ? 'パーツを編集' : '導線を編集'}</h2>
+                    </div>
+                    <button
+                      className="modal-close-button"
+                      onClick={() => setEditModalOpen(false)}
+                      aria-label="編集を閉じる"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="edit-modal-body">
+                    {selectedNode ? renderNodeEditForm() : renderEdgeEditForm()}
+                  </div>
+                </section>
+              </div>
+            )}
+
         </section>
 
         <aside className="edit-panel">
