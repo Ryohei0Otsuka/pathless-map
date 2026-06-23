@@ -96,8 +96,8 @@ type ConnectMode = {
   label: string;
 };
 
-const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v6';
-const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v6';
+const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v7';
+const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v7';
 
 const ACTIONS: ActionKind[] = [
   '取得',
@@ -342,7 +342,10 @@ function createTask(title: string): TaskMap {
   };
 }
 
-function RouteNode({ data, selected }: NodeProps<FlowNode>) {
+function RouteNode(props: NodeProps<FlowNode>) {
+  const data = props.data as FlowNodeData;
+  const selected = props.selected;
+
   return (
     <div className={`route-node route-node--${data.kind} ${selected ? 'is-selected' : ''}`}>
       <Handle type="target" position={Position.Left} className="route-handle route-handle--target" />
@@ -369,7 +372,7 @@ function RouteNode({ data, selected }: NodeProps<FlowNode>) {
   );
 }
 
-function RouteEdge(props: EdgeProps<FlowEdge>) {
+function RouteEdge(props: EdgeProps) {
   const {
     id,
     sourceX,
@@ -384,6 +387,7 @@ function RouteEdge(props: EdgeProps<FlowEdge>) {
     selected,
   } = props;
 
+  const edgeData = data as FlowEdgeData | undefined;
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -394,9 +398,9 @@ function RouteEdge(props: EdgeProps<FlowEdge>) {
     borderRadius: 18,
   });
 
-  const edgeLabel = data?.memo
-    ? `${data.action} / ${data.memo}`
-    : data?.action ?? String(label ?? '');
+  const edgeLabel = edgeData?.memo
+    ? `${edgeData.action} / ${edgeData.memo}`
+    : edgeData?.action ?? String(label ?? '');
 
   return (
     <>
@@ -569,6 +573,7 @@ function App() {
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [saveMode, setSaveMode] = useState<SaveMode>('off');
   const [noticeOpen, setNoticeOpen] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
   const [insertKind, setInsertKind] = useState<NodeKind>('operation');
   const [statusMessage, setStatusMessage] = useState(
@@ -708,6 +713,7 @@ function App() {
     setActiveTaskId(taskId);
     setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
     setSelectedEdgeId(null);
+    setEditModalOpen(false);
     setConnectMode(null);
   };
 
@@ -717,6 +723,7 @@ function App() {
     setActiveTaskId(nextTask.id);
     setSelectedNodeId(nextTask.files[0].nodes[0]?.id ?? null);
     setSelectedEdgeId(null);
+    setEditModalOpen(false);
     setConnectMode(null);
     setStatusMessage('新しいタスクを追加しました。');
   };
@@ -741,6 +748,7 @@ function App() {
     setActiveTaskId(nextTask.id);
     setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
     setSelectedEdgeId(null);
+    setEditModalOpen(false);
     setConnectMode(null);
     setStatusMessage('タスクを削除しました。');
   };
@@ -758,6 +766,7 @@ function App() {
 
     setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
     setSelectedEdgeId(null);
+    setEditModalOpen(false);
     setConnectMode(null);
   };
 
@@ -780,6 +789,7 @@ function App() {
 
     setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
     setSelectedEdgeId(null);
+    setEditModalOpen(false);
     setConnectMode(null);
     setStatusMessage('このタスクにファイル導線を追加しました。');
   };
@@ -815,6 +825,7 @@ function App() {
 
     setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
     setSelectedEdgeId(null);
+    setEditModalOpen(false);
     setConnectMode(null);
     setStatusMessage('ファイル導線を削除しました。');
   };
@@ -913,6 +924,7 @@ function App() {
 
     setSelectedNodeId(newNode.id);
     setSelectedEdgeId(null);
+    setEditModalOpen(true);
     setConnectMode(null);
   };
 
@@ -986,6 +998,7 @@ function App() {
     setConnectMode(null);
     setSelectedNodeId(targetId);
     setSelectedEdgeId(null);
+    setEditModalOpen(true);
     setStatusMessage(`「${label}」で接続しました。`);
   };
 
@@ -1085,6 +1098,7 @@ function App() {
 
     setSelectedNodeId(newNode.id);
     setSelectedEdgeId(null);
+    setEditModalOpen(true);
     setConnectMode(null);
     setStatusMessage(`分岐から「${routeLabel}」を追加しました。`);
   };
@@ -1138,6 +1152,7 @@ function App() {
 
     setSelectedNodeId(newNode.id);
     setSelectedEdgeId(null);
+    setEditModalOpen(true);
     setConnectMode(null);
     setStatusMessage('導線の間にパーツを挿入しました。');
   };
@@ -1154,6 +1169,7 @@ function App() {
 
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
+      setEditModalOpen(false);
       setConnectMode(null);
       return;
     }
@@ -1165,6 +1181,7 @@ function App() {
       }));
 
       setSelectedEdgeId(null);
+      setEditModalOpen(false);
       setConnectMode(null);
     }
   };
@@ -1234,6 +1251,7 @@ function App() {
       setActiveTaskId(nextTask.id);
       setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
       setSelectedEdgeId(null);
+      setEditModalOpen(false);
       setConnectMode(null);
       setStatusMessage('保存データを読み込みました。');
     } catch {
@@ -1258,8 +1276,203 @@ function App() {
     setSelectedNodeId(nextTasks[0].files[0].nodes[0]?.id ?? null);
     setSelectedEdgeId(null);
     setSaveMode('off');
+    setEditModalOpen(false);
     setConnectMode(null);
     setStatusMessage('初期状態に戻しました。保存データも削除済みです。');
+  };
+
+  const startConnectMode = () => {
+    if (!selectedNode) {
+      return;
+    }
+
+    setConnectMode({
+      sourceId: selectedNode.id,
+      label: selectedNode.data.kind === 'split' ? '分岐' : selectedNode.data.action,
+    });
+    setEditModalOpen(false);
+  };
+
+  const renderNodeEditForm = () => {
+    if (!selectedNode) {
+      return null;
+    }
+
+    return (
+      <div className="edit-form">
+        <div className="selected-card">
+          <span>{NODE_KIND_LABELS[selectedNode.data.kind]}</span>
+          <strong>{selectedNode.data.label}</strong>
+        </div>
+
+        <label>
+          抽象名
+          <input
+            value={selectedNode.data.label}
+            onChange={(event) =>
+              updateNodeData(selectedNode.id, {
+                label: event.target.value,
+              })
+            }
+            placeholder="例：端末A / 一般サービスA / 格納先Y"
+          />
+        </label>
+
+        <label>
+          種別
+          <select
+            value={selectedNode.data.kind}
+            onChange={(event) => {
+              const nextKind = event.target.value as NodeKind;
+              const template = NODE_TEMPLATES.find((item) => item.kind === nextKind);
+
+              updateNodeData(selectedNode.id, {
+                kind: nextKind,
+                action: template?.action ?? selectedNode.data.action,
+              });
+            }}
+          >
+            {NODE_TEMPLATES.map((template) => (
+              <option key={template.kind} value={template.kind}>
+                {template.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          工程
+          <select
+            value={selectedNode.data.action}
+            onChange={(event) =>
+              updateNodeData(selectedNode.id, {
+                action: event.target.value as ActionKind,
+              })
+            }
+          >
+            {ACTIONS.map((action) => (
+              <option key={action} value={action}>
+                {action}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          メモ
+          <textarea
+            value={selectedNode.data.memo}
+            onChange={(event) =>
+              updateNodeData(selectedNode.id, {
+                memo: event.target.value,
+              })
+            }
+            rows={5}
+            placeholder="実名ではなく、抽象化して記録"
+          />
+        </label>
+
+        <div className="node-actions">
+          <button disabled={!selectedNodeCanStartRoute} onClick={startConnectMode}>
+            次につなぐ
+          </button>
+
+          <button className="danger-inline-button" onClick={removeSelected}>
+            このパーツを削除
+          </button>
+
+          {!selectedNodeCanStartRoute && (
+            <p className="route-rule-message">
+              このパーツはすでに次の導線があります。複数ルートにしたい場合は「分岐」パーツを使ってください。
+            </p>
+          )}
+        </div>
+
+        {selectedNode.data.kind === 'split' && (
+          <div className="split-actions">
+            <p>分岐ルートを追加</p>
+            {SPLIT_ROUTE_LABELS.map((label) => (
+              <button key={label} onClick={() => addSplitRoute(label)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderEdgeEditForm = () => {
+    if (!selectedEdge) {
+      return null;
+    }
+
+    return (
+      <div className="edit-form">
+        <div className="selected-card">
+          <span>導線</span>
+          <strong>{String(selectedEdge.label ?? '工程')}</strong>
+        </div>
+
+        <label>
+          導線ラベル
+          <select
+            value={selectedEdge.data?.action ?? '移動'}
+            onChange={(event) =>
+              updateEdgeData(selectedEdge.id, {
+                action: event.target.value,
+              })
+            }
+          >
+            {ROUTE_LABELS.map((action) => (
+              <option key={action} value={action}>
+                {action}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          補足メモ
+          <textarea
+            value={selectedEdge.data?.memo ?? ''}
+            onChange={(event) =>
+              updateEdgeData(selectedEdge.id, {
+                memo: event.target.value,
+              })
+            }
+            rows={5}
+            placeholder="例：経由する / 戻す / 別ルートへ"
+          />
+        </label>
+
+        <div className="insert-box">
+          <p>この導線の間にパーツを挿入</p>
+          <label>
+            挿入するパーツ
+            <select
+              value={insertKind}
+              onChange={(event) => setInsertKind(event.target.value as NodeKind)}
+            >
+              {NODE_TEMPLATES.filter((template) => template.kind !== 'source').map(
+                (template) => (
+                  <option key={template.kind} value={template.kind}>
+                    {template.title}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+          <button onClick={insertNodeOnSelectedEdge}>導線の間に挿入</button>
+        </div>
+
+        <div className="node-actions">
+          <button className="danger-inline-button" onClick={removeSelected}>
+            この導線を削除
+          </button>
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -1302,6 +1515,35 @@ function App() {
             <button className="primary-button" onClick={() => setNoticeOpen(false)}>
               理解しました。抽象名のみで作成する
             </button>
+          </section>
+        </div>
+      )}
+
+      {editModalOpen && (selectedNode || selectedEdge) && (
+        <div
+          className="edit-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setEditModalOpen(false)}
+        >
+          <section className="edit-modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="edit-modal-heading">
+              <div>
+                <p>Edit</p>
+                <h2>{selectedNode ? 'パーツを編集' : '導線を編集'}</h2>
+              </div>
+              <button
+                className="modal-close-button"
+                onClick={() => setEditModalOpen(false)}
+                aria-label="編集を閉じる"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="edit-modal-body">
+              {selectedNode ? renderNodeEditForm() : renderEdgeEditForm()}
+            </div>
           </section>
         </div>
       )}
@@ -1507,11 +1749,13 @@ function App() {
 
                 setSelectedNodeId(node.id);
                 setSelectedEdgeId(null);
+                setEditModalOpen(true);
               }}
               onEdgeClick={(_, edge) => {
                 setSelectedEdgeId(edge.id);
                 setSelectedNodeId(null);
                 setConnectMode(null);
+                setEditModalOpen(true);
               }}
               onPaneClick={() => {
                 setSelectedNodeId(null);
@@ -1535,182 +1779,12 @@ function App() {
 
           {!selectedNode && !selectedEdge && (
             <div className="empty-edit">
-              パーツまたは矢印をタップすると、ここで内容を編集できます。
+              パーツまたは矢印をタップすると、モーダルで編集できます。
             </div>
           )}
 
-          {selectedNode && (
-            <div className="edit-form">
-              <div className="selected-card">
-                <span>{NODE_KIND_LABELS[selectedNode.data.kind]}</span>
-                <strong>{selectedNode.data.label}</strong>
-              </div>
-
-              <label>
-                抽象名
-                <input
-                  value={selectedNode.data.label}
-                  onChange={(event) =>
-                    updateNodeData(selectedNode.id, {
-                      label: event.target.value,
-                    })
-                  }
-                  placeholder="例：端末A / 一般サービスA / 格納先Y"
-                />
-              </label>
-
-              <label>
-                種別
-                <select
-                  value={selectedNode.data.kind}
-                  onChange={(event) => {
-                    const nextKind = event.target.value as NodeKind;
-                    const template = NODE_TEMPLATES.find((item) => item.kind === nextKind);
-
-                    updateNodeData(selectedNode.id, {
-                      kind: nextKind,
-                      action: template?.action ?? selectedNode.data.action,
-                    });
-                  }}
-                >
-                  {NODE_TEMPLATES.map((template) => (
-                    <option key={template.kind} value={template.kind}>
-                      {template.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                工程
-                <select
-                  value={selectedNode.data.action}
-                  onChange={(event) =>
-                    updateNodeData(selectedNode.id, {
-                      action: event.target.value as ActionKind,
-                    })
-                  }
-                >
-                  {ACTIONS.map((action) => (
-                    <option key={action} value={action}>
-                      {action}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                メモ
-                <textarea
-                  value={selectedNode.data.memo}
-                  onChange={(event) =>
-                    updateNodeData(selectedNode.id, {
-                      memo: event.target.value,
-                    })
-                  }
-                  rows={5}
-                  placeholder="実名ではなく、抽象化して記録"
-                />
-              </label>
-
-              <div className="node-actions">
-                <button
-                  disabled={!selectedNodeCanStartRoute}
-                  onClick={() =>
-                    setConnectMode({
-                      sourceId: selectedNode.id,
-                      label:
-                        selectedNode.data.kind === 'split'
-                          ? '分岐'
-                          : selectedNode.data.action,
-                    })
-                  }
-                >
-                  次につなぐ
-                </button>
-
-                {!selectedNodeCanStartRoute && (
-                  <p className="route-rule-message">
-                    このパーツはすでに次の導線があります。複数ルートにしたい場合は「分岐」パーツを使ってください。
-                  </p>
-                )}
-              </div>
-
-              {selectedNode.data.kind === 'split' && (
-                <div className="split-actions">
-                  <p>分岐ルートを追加</p>
-                  {SPLIT_ROUTE_LABELS.map((label) => (
-                    <button key={label} onClick={() => addSplitRoute(label)}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {selectedEdge && (
-            <div className="edit-form">
-              <div className="selected-card">
-                <span>導線</span>
-                <strong>{String(selectedEdge.label ?? '工程')}</strong>
-              </div>
-
-              <label>
-                導線ラベル
-                <select
-                  value={selectedEdge.data?.action ?? '移動'}
-                  onChange={(event) =>
-                    updateEdgeData(selectedEdge.id, {
-                      action: event.target.value,
-                    })
-                  }
-                >
-                  {ROUTE_LABELS.map((action) => (
-                    <option key={action} value={action}>
-                      {action}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                補足メモ
-                <textarea
-                  value={selectedEdge.data?.memo ?? ''}
-                  onChange={(event) =>
-                    updateEdgeData(selectedEdge.id, {
-                      memo: event.target.value,
-                    })
-                  }
-                  rows={5}
-                  placeholder="例：経由する / 戻す / 別ルートへ"
-                />
-              </label>
-
-              <div className="insert-box">
-                <p>この導線の間にパーツを挿入</p>
-                <label>
-                  挿入するパーツ
-                  <select
-                    value={insertKind}
-                    onChange={(event) => setInsertKind(event.target.value as NodeKind)}
-                  >
-                    {NODE_TEMPLATES.filter((template) => template.kind !== 'source').map(
-                      (template) => (
-                        <option key={template.kind} value={template.kind}>
-                          {template.title}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </label>
-                <button onClick={insertNodeOnSelectedEdge}>
-                  導線の間に挿入
-                </button>
-              </div>
-            </div>
-          )}
+          {selectedNode && renderNodeEditForm()}
+          {selectedEdge && renderEdgeEditForm()}
 
           <div className="storage-box">
             <label>
