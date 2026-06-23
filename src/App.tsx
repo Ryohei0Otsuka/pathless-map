@@ -528,6 +528,7 @@ function buildRouteSummaries(file: FileRoute): string[] {
 
     outgoing.forEach((edge) => {
       const targetNode = nodeMap.get(edge.target);
+
       if (!targetNode) {
         summaries.push(routeText);
         return;
@@ -565,7 +566,6 @@ function App() {
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
   const [insertKind, setInsertKind] = useState<NodeKind>('operation');
-  const [animationEnabled, setAnimationEnabled] = useState(true);
   const [statusMessage, setStatusMessage] = useState(
     '保存OFF：この画面の内容は自動保存されません。',
   );
@@ -1176,6 +1176,7 @@ function App() {
     }
 
     const storage = getStorage(saveMode);
+
     if (!storage) {
       return;
     }
@@ -1183,7 +1184,6 @@ function App() {
     const payload = JSON.stringify({
       tasks,
       activeTaskId,
-      animationEnabled,
       savedAt: new Date().toISOString(),
     });
 
@@ -1214,7 +1214,6 @@ function App() {
       const parsed = JSON.parse(raw) as {
         tasks?: TaskMap[];
         activeTaskId?: string;
-        animationEnabled?: boolean;
       };
 
       if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
@@ -1228,7 +1227,6 @@ function App() {
 
       setTasks(parsed.tasks);
       setActiveTaskId(nextTask.id);
-      setAnimationEnabled(parsed.animationEnabled ?? true);
       setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
       setSelectedEdgeId(null);
       setConnectMode(null);
@@ -1256,7 +1254,6 @@ function App() {
     setSelectedEdgeId(null);
     setSaveMode('off');
     setConnectMode(null);
-    setAnimationEnabled(true);
     setStatusMessage('初期状態に戻しました。保存データも削除済みです。');
   };
 
@@ -1274,15 +1271,14 @@ function App() {
     const payload = JSON.stringify({
       tasks,
       activeTaskId,
-      animationEnabled,
       savedAt: new Date().toISOString(),
     });
 
     storage.setItem(getStorageKey(saveMode), payload);
-  }, [activeTaskId, animationEnabled, hasSecurityWarnings, saveMode, tasks]);
+  }, [activeTaskId, hasSecurityWarnings, saveMode, tasks]);
 
   return (
-    <main className={`app-shell ${animationEnabled ? 'is-flowing' : 'is-static'}`}>
+    <main className="app-shell">
       {noticeOpen && (
         <div className="notice-backdrop" role="dialog" aria-modal="true">
           <section className="notice-card">
@@ -1429,8 +1425,8 @@ function App() {
         </div>
 
         <ol>
-          {routeSummaries.map((summary) => (
-            <li key={summary}>{summary}</li>
+          {routeSummaries.map((summary, index) => (
+            <li key={`${summary}-${index}`}>{summary}</li>
           ))}
         </ol>
       </section>
@@ -1480,14 +1476,7 @@ function App() {
 
             <div className="flow-toolbar-actions">
               <button
-                className="ghost-button"
-                onClick={() => setAnimationEnabled((current) => !current)}
-              >
-                {animationEnabled ? '導線アニメOFF' : '導線アニメON'}
-              </button>
-
-              <button
-                className="ghost-button"
+                className="danger-ghost-button"
                 onClick={removeSelected}
                 disabled={!selectedNodeId && !selectedEdgeId}
               >

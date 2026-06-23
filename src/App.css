@@ -118,7 +118,6 @@
 }
 
 .security-strip button,
-.ghost-button,
 .storage-actions button,
 .primary-button,
 .add-tab-button,
@@ -139,6 +138,25 @@
   padding: 14px 18px;
   color: #f8fffc;
   background: #2f7166;
+}
+
+.danger-ghost-button {
+  border: 1px solid rgba(162, 80, 56, 0.26);
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: #82382b;
+  background: #ffe6dc;
+  font-weight: 850;
+}
+
+.danger-ghost-button:hover:not(:disabled) {
+  background: #ffd8ca;
+  box-shadow: 0 10px 24px rgba(130, 56, 43, 0.12);
+}
+
+.danger-ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .warning-box {
@@ -635,11 +653,6 @@
   filter: drop-shadow(0 0 3px rgba(47, 113, 102, 0.18));
 }
 
-.app-shell.is-static .route-edge-path {
-  animation: none;
-  stroke-dasharray: 0;
-}
-
 .route-edge-path.is-selected {
   stroke: #174d44;
   stroke-width: 4;
@@ -656,10 +669,6 @@
 .route-particle--soft {
   fill: #6ee7ad;
   opacity: 0.72;
-}
-
-.app-shell.is-static .route-particle {
-  display: none;
 }
 
 .route-edge-label {
@@ -1026,7 +1035,7 @@
     grid-template-columns: 1fr;
   }
 
-  .ghost-button {
+  .danger-ghost-button {
     width: 100%;
   }
 
