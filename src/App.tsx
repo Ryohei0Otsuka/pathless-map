@@ -1303,11 +1303,11 @@ function App() {
 
       <header className="hero">
         <div>
-          <p className="eyebrow">Pathless Map</p>
-          <h1>ファイルの通り道を見る地図</h1>
+          <p className="eyebrow">機密を入れないファイル導線整理ツール</p>
+          <h1>Pathless Map</h1>
           <p>
-            どこから来て、どの端末・サービス・工程を通り、どこへ格納されるか。
-            緑の粒子でファイルの進行方向を見せる、機密を入れない導線マップ。
+            具体名ではなく、流れを見る。実パスではなく、導線を見る。
+            ファイル名ではなく、役割を見るためのローカル導線マップ。
           </p>
         </div>
 
