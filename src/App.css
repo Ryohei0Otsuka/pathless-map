@@ -123,7 +123,8 @@
 .primary-button,
 .add-tab-button,
 .node-actions button,
-.split-actions button {
+.split-actions button,
+.insert-box button {
   border: 0;
   border-radius: 999px;
   padding: 10px 14px;
@@ -156,7 +157,8 @@
 
 .task-board,
 .file-board,
-.connect-hint {
+.connect-hint,
+.route-summary-card {
   margin: 14px 0;
   padding: 14px;
   border: 1px solid rgba(72, 108, 101, 0.18);
@@ -243,6 +245,51 @@
   color: #7b3529;
   background: rgba(255, 239, 232, 0.9);
   font-weight: 850;
+}
+
+.route-summary-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.route-summary-heading p {
+  margin: 0 0 4px;
+  color: #679188;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.route-summary-heading h2 {
+  margin: 0;
+  color: #243b38;
+  font-size: 1.08rem;
+}
+
+.route-summary-heading span {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #2d5b54;
+  background: #e2f4ef;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.route-summary-card ol {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 22px;
+}
+
+.route-summary-card li {
+  color: #445d59;
+  font-size: 0.9rem;
+  line-height: 1.7;
 }
 
 .connect-hint {
@@ -388,6 +435,13 @@
   margin-top: 2px;
   color: #667a76;
   font-size: 0.82rem;
+}
+
+.flow-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .flow-area {
@@ -581,6 +635,11 @@
   filter: drop-shadow(0 0 3px rgba(47, 113, 102, 0.18));
 }
 
+.app-shell.is-static .route-edge-path {
+  animation: none;
+  stroke-dasharray: 0;
+}
+
 .route-edge-path.is-selected {
   stroke: #174d44;
   stroke-width: 4;
@@ -597,6 +656,10 @@
 .route-particle--soft {
   fill: #6ee7ad;
   opacity: 0.72;
+}
+
+.app-shell.is-static .route-particle {
+  display: none;
 }
 
 .route-edge-label {
@@ -657,7 +720,8 @@
 }
 
 .edit-form label,
-.storage-box label {
+.storage-box label,
+.insert-box label {
   display: grid;
   gap: 7px;
   color: #314844;
@@ -668,7 +732,8 @@
 .edit-form input,
 .edit-form textarea,
 .edit-form select,
-.storage-box select {
+.storage-box select,
+.insert-box select {
   width: 100%;
   border: 1px solid rgba(70, 107, 100, 0.2);
   border-radius: 16px;
@@ -688,7 +753,8 @@
 .edit-form select:focus,
 .storage-box select:focus,
 .task-meta input:focus,
-.file-meta input:focus {
+.file-meta input:focus,
+.insert-box select:focus {
   border-color: rgba(47, 113, 102, 0.48);
   box-shadow: 0 0 0 4px rgba(47, 113, 102, 0.12);
 }
@@ -737,6 +803,27 @@
   padding: 10px 8px;
   color: #4a3d61;
   background: #ffffff;
+}
+
+.insert-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed rgba(47, 113, 102, 0.24);
+  border-radius: 18px;
+  background: rgba(230, 247, 241, 0.72);
+}
+
+.insert-box p {
+  margin: 0;
+  color: #2f514b;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.insert-box button {
+  color: #f8fffc;
+  background: #2f7166;
 }
 
 .storage-box {
@@ -920,9 +1007,23 @@
     width: 100%;
   }
 
+  .route-summary-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .workspace {
+    gap: 12px;
+  }
+
   .flow-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .flow-toolbar-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .ghost-button {
@@ -938,6 +1039,16 @@
   .flow-card,
   .edit-panel {
     border-radius: 24px;
+  }
+
+  .edit-panel {
+    position: sticky;
+    z-index: 20;
+    bottom: 10px;
+    max-height: 78vh;
+    overflow: auto;
+    border-color: rgba(47, 113, 102, 0.24);
+    box-shadow: 0 16px 60px rgba(28, 58, 52, 0.24);
   }
 
   .split-actions {

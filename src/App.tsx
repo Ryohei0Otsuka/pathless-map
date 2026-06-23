@@ -96,8 +96,8 @@ type ConnectMode = {
   label: string;
 };
 
-const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v4';
-const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v4';
+const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v5';
+const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v5';
 
 const ACTIONS: ActionKind[] = [
   '取得',
@@ -125,11 +125,28 @@ const ROUTE_LABELS = [
   '分岐',
   'ルートA',
   'ルートB',
+  '格納先A',
+  '格納先B',
+  '別ファイル生成',
+  '再加工',
   '戻し',
   '保留',
   '格納',
   '完了',
 ];
+
+const SPLIT_ROUTE_LABELS = [
+  'ルートA',
+  'ルートB',
+  '格納先A',
+  '格納先B',
+  '別ファイル生成',
+  '再加工',
+  '戻し',
+  '保留',
+] as const;
+
+type SplitRouteLabel = (typeof SPLIT_ROUTE_LABELS)[number];
 
 const NODE_KIND_LABELS: Record<NodeKind, string> = {
   source: '取得元',
@@ -327,7 +344,7 @@ function RouteNode({ data, selected }: NodeProps<FlowNode>) {
       {data.kind === 'split' && (
         <div className="split-preview" aria-label="分岐ルート">
           <span>ルートA</span>
-          <span>ルートB</span>
+          <span>格納先B</span>
           <span>戻し</span>
         </div>
       )}
@@ -471,6 +488,70 @@ function scanSensitiveText(values: string[]): string[] {
   return Array.from(new Set(warnings));
 }
 
+function buildRouteSummaries(file: FileRoute): string[] {
+  const nodeMap = new Map(file.nodes.map((node) => [node.id, node]));
+  const outgoingMap = new Map<string, FlowEdge[]>();
+  const incomingCount = new Map<string, number>();
+
+  file.nodes.forEach((node) => {
+    outgoingMap.set(node.id, []);
+    incomingCount.set(node.id, 0);
+  });
+
+  file.edges.forEach((edge) => {
+    outgoingMap.set(edge.source, [...(outgoingMap.get(edge.source) ?? []), edge]);
+    incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+  });
+
+  const startNodes = file.nodes.filter(
+    (node) => node.data.kind === 'source' || (incomingCount.get(node.id) ?? 0) === 0,
+  );
+
+  const summaries: string[] = [];
+
+  const walk = (nodeId: string, routeText: string, visited: Set<string>) => {
+    const node = nodeMap.get(nodeId);
+
+    if (!node) {
+      return;
+    }
+
+    const outgoing = outgoingMap.get(nodeId) ?? [];
+
+    if (outgoing.length === 0 || visited.has(nodeId)) {
+      summaries.push(routeText);
+      return;
+    }
+
+    const nextVisited = new Set(visited);
+    nextVisited.add(nodeId);
+
+    outgoing.forEach((edge) => {
+      const targetNode = nodeMap.get(edge.target);
+      if (!targetNode) {
+        summaries.push(routeText);
+        return;
+      }
+
+      const edgeLabel = edge.data?.memo
+        ? `${edge.data.action} / ${edge.data.memo}`
+        : edge.data?.action ?? '移動';
+
+      walk(
+        targetNode.id,
+        `${routeText} --${edgeLabel}→ ${targetNode.data.label}`,
+        nextVisited,
+      );
+    });
+  };
+
+  startNodes.forEach((node) => {
+    walk(node.id, node.data.label, new Set<string>());
+  });
+
+  return summaries.length > 0 ? summaries.slice(0, 12) : ['まだ導線がありません。'];
+}
+
 const INITIAL_TASKS: TaskMap[] = [createTask('タスクA')];
 
 function App() {
@@ -483,6 +564,8 @@ function App() {
   const [saveMode, setSaveMode] = useState<SaveMode>('off');
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
+  const [insertKind, setInsertKind] = useState<NodeKind>('operation');
+  const [animationEnabled, setAnimationEnabled] = useState(true);
   const [statusMessage, setStatusMessage] = useState(
     '保存OFF：この画面の内容は自動保存されません。',
   );
@@ -533,6 +616,8 @@ function App() {
   const selectedNodeCanStartRoute =
     !!selectedNode &&
     (selectedNode.data.kind === 'split' || selectedNodeOutgoingCount === 0);
+
+  const routeSummaries = useMemo(() => buildRouteSummaries(activeFile), [activeFile]);
 
   const securityWarnings = useMemo(() => {
     const values = tasks.flatMap((task) => [
@@ -899,7 +984,7 @@ function App() {
     setStatusMessage(`「${label}」で接続しました。`);
   };
 
-  const addSplitRoute = (routeLabel: 'ルートA' | 'ルートB' | '戻し' | '保留') => {
+  const addSplitRoute = (routeLabel: SplitRouteLabel) => {
     if (!selectedNode) {
       return;
     }
@@ -912,7 +997,7 @@ function App() {
     const routeIndex = edges.filter((edge) => edge.source === selectedNode.id).length;
 
     const routeSettings: Record<
-      'ルートA' | 'ルートB' | '戻し' | '保留',
+      SplitRouteLabel,
       {
         kind: NodeKind;
         action: ActionKind;
@@ -927,10 +1012,34 @@ function App() {
         memo: '分岐後に進む別ルート。',
       },
       ルートB: {
+        kind: 'operation',
+        action: '加工',
+        label: '別工程B',
+        memo: '分岐後に進む別ルート。',
+      },
+      格納先A: {
         kind: 'storage',
         action: '格納',
-        label: '別格納先B',
+        label: '格納先A',
+        memo: '分岐後の格納先。',
+      },
+      格納先B: {
+        kind: 'storage',
+        action: '格納',
+        label: '格納先B',
         memo: '分岐後の別格納先。',
+      },
+      別ファイル生成: {
+        kind: 'operation',
+        action: '加工',
+        label: '別ファイル生成',
+        memo: '加工により別ファイルが発生する流れ。',
+      },
+      再加工: {
+        kind: 'operation',
+        action: '戻し',
+        label: '再加工',
+        memo: '前工程へ戻す、または再処理する。',
       },
       戻し: {
         kind: 'operation',
@@ -973,6 +1082,59 @@ function App() {
     setSelectedEdgeId(null);
     setConnectMode(null);
     setStatusMessage(`分岐から「${routeLabel}」を追加しました。`);
+  };
+
+  const insertNodeOnSelectedEdge = () => {
+    if (!selectedEdge) {
+      return;
+    }
+
+    const template = NODE_TEMPLATES.find((item) => item.kind === insertKind) ?? NODE_TEMPLATES[3];
+    const sourceNode = nodes.find((node) => node.id === selectedEdge.source);
+    const targetNode = nodes.find((node) => node.id === selectedEdge.target);
+
+    if (!sourceNode || !targetNode) {
+      setStatusMessage('挿入先の導線を取得できませんでした。');
+      return;
+    }
+
+    const newNode: FlowNode = {
+      id: createId(`node-${template.kind}`),
+      type: 'routeCard',
+      position: {
+        x: (sourceNode.position.x + targetNode.position.x) / 2,
+        y: (sourceNode.position.y + targetNode.position.y) / 2 + 70,
+      },
+      data: {
+        label: template.title,
+        kind: template.kind,
+        action: template.action,
+        memo: template.description,
+      },
+    };
+
+    const firstEdge = createEdge(
+      selectedEdge.source,
+      newNode.id,
+      selectedEdge.data?.action ?? '移動',
+      selectedEdge.data?.memo ?? '',
+    );
+    const secondEdge = createEdge(newNode.id, selectedEdge.target, template.action);
+
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: [...file.nodes, newNode],
+      edges: [
+        ...file.edges.filter((edge) => edge.id !== selectedEdge.id),
+        firstEdge,
+        secondEdge,
+      ],
+    }));
+
+    setSelectedNodeId(newNode.id);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+    setStatusMessage('導線の間にパーツを挿入しました。');
   };
 
   const removeSelected = () => {
@@ -1021,6 +1183,7 @@ function App() {
     const payload = JSON.stringify({
       tasks,
       activeTaskId,
+      animationEnabled,
       savedAt: new Date().toISOString(),
     });
 
@@ -1051,6 +1214,7 @@ function App() {
       const parsed = JSON.parse(raw) as {
         tasks?: TaskMap[];
         activeTaskId?: string;
+        animationEnabled?: boolean;
       };
 
       if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
@@ -1064,6 +1228,7 @@ function App() {
 
       setTasks(parsed.tasks);
       setActiveTaskId(nextTask.id);
+      setAnimationEnabled(parsed.animationEnabled ?? true);
       setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
       setSelectedEdgeId(null);
       setConnectMode(null);
@@ -1091,6 +1256,7 @@ function App() {
     setSelectedEdgeId(null);
     setSaveMode('off');
     setConnectMode(null);
+    setAnimationEnabled(true);
     setStatusMessage('初期状態に戻しました。保存データも削除済みです。');
   };
 
@@ -1108,14 +1274,15 @@ function App() {
     const payload = JSON.stringify({
       tasks,
       activeTaskId,
+      animationEnabled,
       savedAt: new Date().toISOString(),
     });
 
     storage.setItem(getStorageKey(saveMode), payload);
-  }, [activeTaskId, hasSecurityWarnings, saveMode, tasks]);
+  }, [activeTaskId, animationEnabled, hasSecurityWarnings, saveMode, tasks]);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${animationEnabled ? 'is-flowing' : 'is-static'}`}>
       {noticeOpen && (
         <div className="notice-backdrop" role="dialog" aria-modal="true">
           <section className="notice-card">
@@ -1252,6 +1419,22 @@ function App() {
         </div>
       </section>
 
+      <section className="route-summary-card">
+        <div className="route-summary-heading">
+          <div>
+            <p>Route Summary</p>
+            <h2>このファイルのルート一覧</h2>
+          </div>
+          <span>{activeFile.label}</span>
+        </div>
+
+        <ol>
+          {routeSummaries.map((summary) => (
+            <li key={summary}>{summary}</li>
+          ))}
+        </ol>
+      </section>
+
       {connectMode && (
         <section className="connect-hint">
           <strong>接続モード中</strong>
@@ -1295,13 +1478,22 @@ function App() {
               </span>
             </div>
 
-            <button
-              className="ghost-button"
-              onClick={removeSelected}
-              disabled={!selectedNodeId && !selectedEdgeId}
-            >
-              選択中を削除
-            </button>
+            <div className="flow-toolbar-actions">
+              <button
+                className="ghost-button"
+                onClick={() => setAnimationEnabled((current) => !current)}
+              >
+                {animationEnabled ? '導線アニメOFF' : '導線アニメON'}
+              </button>
+
+              <button
+                className="ghost-button"
+                onClick={removeSelected}
+                disabled={!selectedNodeId && !selectedEdgeId}
+              >
+                選択中を削除
+              </button>
+            </div>
           </div>
 
           <div className="flow-area">
@@ -1453,10 +1645,11 @@ function App() {
               {selectedNode.data.kind === 'split' && (
                 <div className="split-actions">
                   <p>分岐ルートを追加</p>
-                  <button onClick={() => addSplitRoute('ルートA')}>ルートA</button>
-                  <button onClick={() => addSplitRoute('ルートB')}>ルートB</button>
-                  <button onClick={() => addSplitRoute('戻し')}>戻し</button>
-                  <button onClick={() => addSplitRoute('保留')}>保留</button>
+                  {SPLIT_ROUTE_LABELS.map((label) => (
+                    <button key={label} onClick={() => addSplitRoute(label)}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -1500,6 +1693,28 @@ function App() {
                   placeholder="例：経由する / 戻す / 別ルートへ"
                 />
               </label>
+
+              <div className="insert-box">
+                <p>この導線の間にパーツを挿入</p>
+                <label>
+                  挿入するパーツ
+                  <select
+                    value={insertKind}
+                    onChange={(event) => setInsertKind(event.target.value as NodeKind)}
+                  >
+                    {NODE_TEMPLATES.filter((template) => template.kind !== 'source').map(
+                      (template) => (
+                        <option key={template.kind} value={template.kind}>
+                          {template.title}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                <button onClick={insertNodeOnSelectedEdge}>
+                  導線の間に挿入
+                </button>
+              </div>
             </div>
           )}
 
