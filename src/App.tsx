@@ -28,10 +28,10 @@ import './App.css';
 type NodeKind =
   | 'source'
   | 'device'
-  | 'service'
   | 'operation'
   | 'tool'
   | 'split'
+  | 'service'
   | 'storage'
   | 'memo';
 
@@ -96,8 +96,8 @@ type ConnectMode = {
   label: string;
 };
 
-const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v5';
-const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v5';
+const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v6';
+const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v6';
 
 const ACTIONS: ActionKind[] = [
   '取得',
@@ -151,10 +151,10 @@ type SplitRouteLabel = (typeof SPLIT_ROUTE_LABELS)[number];
 const NODE_KIND_LABELS: Record<NodeKind, string> = {
   source: '取得元',
   device: '端末・場所',
-  service: '一般サービス',
   operation: '工程',
   tool: 'ツール',
   split: '分岐',
+  service: '一般サービス',
   storage: '格納先',
   memo: 'メモ',
 };
@@ -369,7 +369,7 @@ function RouteNode({ data, selected }: NodeProps<FlowNode>) {
   );
 }
 
-function RouteEdge(props: EdgeProps) {
+function RouteEdge(props: EdgeProps<FlowEdge>) {
   const {
     id,
     sourceX,
@@ -384,7 +384,6 @@ function RouteEdge(props: EdgeProps) {
     selected,
   } = props;
 
-  const edgeData = data as FlowEdgeData | undefined;
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -395,36 +394,29 @@ function RouteEdge(props: EdgeProps) {
     borderRadius: 18,
   });
 
-  const pathId = `route-path-${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
-  const edgeLabel = edgeData?.memo
-    ? `${edgeData.action} / ${edgeData.memo}`
-    : edgeData?.action ?? String(label ?? '');
+  const edgeLabel = data?.memo
+    ? `${data.action} / ${data.memo}`
+    : data?.action ?? String(label ?? '');
 
   return (
     <>
       <path
-        id={pathId}
+        id={id}
         d={edgePath}
         className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''}`}
         markerEnd={markerEnd}
       />
 
       <circle r="4" className="route-particle">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0s">
-          <mpath href={`#${pathId}`} />
-        </animateMotion>
+        <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
       </circle>
 
       <circle r="3" className="route-particle route-particle--soft">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s">
-          <mpath href={`#${pathId}`} />
-        </animateMotion>
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
       </circle>
 
       <circle r="3" className="route-particle route-particle--soft">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s">
-          <mpath href={`#${pathId}`} />
-        </animateMotion>
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
       </circle>
 
       <EdgeLabelRenderer>
@@ -962,7 +954,6 @@ function App() {
         };
       }),
     }));
-;
   };
 
   const connectNodes = (sourceId: string, targetId: string, label: string) => {
@@ -1755,7 +1746,7 @@ function App() {
 
             <div className="storage-actions">
               <button onClick={saveDraft}>保存</button>
-              <button onClick={loadDraft}>読み込み</button>
+              <button onClick={loadDraft}>読込</button>
               <button className="danger-button" onClick={resetMap}>
                 全削除
               </button>

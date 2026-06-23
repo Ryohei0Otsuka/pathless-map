@@ -1,1118 +1,1763 @@
-.app-shell {
-  width: min(1440px, 100%);
-  min-height: 100vh;
-  margin: 0 auto;
-  padding: 18px;
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Background,
+  Controls,
+  EdgeLabelRenderer,
+  Handle,
+  MarkerType,
+  MiniMap,
+  Position,
+  ReactFlow,
+  addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
+  getSmoothStepPath,
+  type Connection,
+  type Edge,
+  type EdgeChange,
+  type EdgeProps,
+  type EdgeTypes,
+  type Node,
+  type NodeChange,
+  type NodeProps,
+  type NodeTypes,
+  type OnConnect,
+} from '@xyflow/react';
+import './App.css';
+
+type NodeKind =
+  | 'source'
+  | 'device'
+  | 'operation'
+  | 'tool'
+  | 'split'
+  | 'service'
+  | 'storage'
+  | 'memo';
+
+type ActionKind =
+  | '取得'
+  | '移動'
+  | '圧縮'
+  | '解凍'
+  | '加工'
+  | 'リネーム'
+  | 'ツール使用'
+  | '分岐'
+  | '格納'
+  | '戻し'
+  | '保留'
+  | '完了';
+
+type SaveMode = 'off' | 'session' | 'local';
+
+type FlowNodeData = {
+  [key: string]: unknown;
+  label: string;
+  kind: NodeKind;
+  action: ActionKind;
+  memo: string;
+};
+
+type FlowEdgeData = {
+  [key: string]: unknown;
+  action: string;
+  memo: string;
+};
+
+type FlowNode = Node<FlowNodeData, 'routeCard'>;
+type FlowEdge = Edge<FlowEdgeData>;
+
+type NodeTemplate = {
+  kind: NodeKind;
+  title: string;
+  action: ActionKind;
+  description: string;
+  icon: string;
+};
+
+type FileRoute = {
+  id: string;
+  label: string;
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+};
+
+type TaskMap = {
+  id: string;
+  title: string;
+  summary: string;
+  activeFileId: string;
+  files: FileRoute[];
+};
+
+type ConnectMode = {
+  sourceId: string;
+  label: string;
+};
+
+const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v6';
+const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v6';
+
+const ACTIONS: ActionKind[] = [
+  '取得',
+  '移動',
+  '圧縮',
+  '解凍',
+  '加工',
+  'リネーム',
+  'ツール使用',
+  '分岐',
+  '格納',
+  '戻し',
+  '保留',
+  '完了',
+];
+
+const ROUTE_LABELS = [
+  '取得',
+  '移動',
+  '圧縮',
+  '解凍',
+  '加工',
+  'リネーム',
+  'ツール使用',
+  '分岐',
+  'ルートA',
+  'ルートB',
+  '格納先A',
+  '格納先B',
+  '別ファイル生成',
+  '再加工',
+  '戻し',
+  '保留',
+  '格納',
+  '完了',
+];
+
+const SPLIT_ROUTE_LABELS = [
+  'ルートA',
+  'ルートB',
+  '格納先A',
+  '格納先B',
+  '別ファイル生成',
+  '再加工',
+  '戻し',
+  '保留',
+] as const;
+
+type SplitRouteLabel = (typeof SPLIT_ROUTE_LABELS)[number];
+
+const NODE_KIND_LABELS: Record<NodeKind, string> = {
+  source: '取得元',
+  device: '端末・場所',
+  operation: '工程',
+  tool: 'ツール',
+  split: '分岐',
+  service: '一般サービス',
+  storage: '格納先',
+  memo: 'メモ',
+};
+
+const NODE_TEMPLATES: NodeTemplate[] = [
+  {
+    kind: 'source',
+    title: '取得元',
+    action: '取得',
+    description: 'ファイルが来る起点',
+    icon: 'IN',
+  },
+  {
+    kind: 'device',
+    title: '端末・場所',
+    action: '移動',
+    description: '端末A・作業場所Xなど',
+    icon: 'PC',
+  },
+  {
+    kind: 'operation',
+    title: '工程',
+    action: '加工',
+    description: '圧縮・解凍・加工など',
+    icon: 'OP',
+  },
+  {
+    kind: 'tool',
+    title: 'ツール使用',
+    action: 'ツール使用',
+    description: 'ツールAで処理する',
+    icon: 'TL',
+  },
+  {
+    kind: 'split',
+    title: '分岐',
+    action: '分岐',
+    description: 'ルートが分かれる地点',
+    icon: 'Y',
+  },
+  {
+    kind: 'service',
+    title: '一般サービス',
+    action: '移動',
+    description: 'Slack / SharePoint など',
+    icon: 'SV',
+  },
+  {
+    kind: 'storage',
+    title: '格納先',
+    action: '格納',
+    description: '最終格納・一時保管',
+    icon: 'OUT',
+  },
+  {
+    kind: 'memo',
+    title: 'メモ',
+    action: '保留',
+    description: '補足・注意・例外',
+    icon: '!',
+  },
+];
+
+function createId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-.hero {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 18px;
-  align-items: center;
-  padding: 22px;
-  border: 1px solid rgba(72, 108, 101, 0.18);
-  border-radius: 28px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(242, 251, 248, 0.74)),
-    repeating-linear-gradient(
-      90deg,
-      rgba(85, 128, 119, 0.05) 0,
-      rgba(85, 128, 119, 0.05) 1px,
-      transparent 1px,
-      transparent 28px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(85, 128, 119, 0.04) 0,
-      rgba(85, 128, 119, 0.04) 1px,
-      transparent 1px,
-      transparent 28px
+function createEdge(source: string, target: string, label: string, memo = ''): FlowEdge {
+  return {
+    id: createId('edge'),
+    source,
+    target,
+    type: 'route',
+    label: memo ? `${label} / ${memo}` : label,
+    data: {
+      action: label,
+      memo,
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+    },
+  };
+}
+
+function createStarterFile(label: string): FileRoute {
+  const prefix = createId('flow');
+
+  const sourceId = `${prefix}-source`;
+  const deviceId = `${prefix}-device`;
+  const operationId = `${prefix}-operation`;
+  const toolId = `${prefix}-tool`;
+  const serviceId = `${prefix}-service`;
+  const storageId = `${prefix}-storage`;
+
+  return {
+    id: createId('file'),
+    label,
+    nodes: [
+      {
+        id: sourceId,
+        type: 'routeCard',
+        position: { x: 20, y: 100 },
+        data: {
+          label: '取得元A',
+          kind: 'source',
+          action: '取得',
+          memo: 'どこからファイルを取得するか。実名は入れない。',
+        },
+      },
+      {
+        id: deviceId,
+        type: 'routeCard',
+        position: { x: 270, y: 100 },
+        data: {
+          label: '端末A',
+          kind: 'device',
+          action: '移動',
+          memo: '作業する端末・場所。実端末名や実パスは入れない。',
+        },
+      },
+      {
+        id: operationId,
+        type: 'routeCard',
+        position: { x: 520, y: 100 },
+        data: {
+          label: '工程A',
+          kind: 'operation',
+          action: '加工',
+          memo: '圧縮・解凍・加工・リネームなど。',
+        },
+      },
+      {
+        id: toolId,
+        type: 'routeCard',
+        position: { x: 770, y: 100 },
+        data: {
+          label: 'ツールA',
+          kind: 'tool',
+          action: 'ツール使用',
+          memo: '処理に使うツール。実ツール名が機密の場合は抽象化する。',
+        },
+      },
+      {
+        id: serviceId,
+        type: 'routeCard',
+        position: { x: 1020, y: 100 },
+        data: {
+          label: '一般サービスA',
+          kind: 'service',
+          action: '移動',
+          memo: 'Slack / SharePoint など。格納・共有に近い経由先として扱う。',
+        },
+      },
+      {
+        id: storageId,
+        type: 'routeCard',
+        position: { x: 1270, y: 100 },
+        data: {
+          label: '格納先Y',
+          kind: 'storage',
+          action: '格納',
+          memo: 'どこへ格納するか。実パスは入れない。',
+        },
+      },
+    ],
+    edges: [
+      createEdge(sourceId, deviceId, '取得'),
+      createEdge(deviceId, operationId, '移動'),
+      createEdge(operationId, toolId, '加工'),
+      createEdge(toolId, serviceId, 'ツール使用'),
+      createEdge(serviceId, storageId, '格納'),
+    ],
+  };
+}
+
+function createTask(title: string): TaskMap {
+  const firstFile = createStarterFile('ファイル種別A');
+
+  return {
+    id: createId('task'),
+    title,
+    summary: 'このタスクで扱うファイル導線を抽象化して整理する。',
+    activeFileId: firstFile.id,
+    files: [firstFile],
+  };
+}
+
+function RouteNode({ data, selected }: NodeProps<FlowNode>) {
+  return (
+    <div className={`route-node route-node--${data.kind} ${selected ? 'is-selected' : ''}`}>
+      <Handle type="target" position={Position.Left} className="route-handle route-handle--target" />
+
+      <div className="route-node__top">
+        <span>{NODE_KIND_LABELS[data.kind]}</span>
+        <em>{data.action}</em>
+      </div>
+
+      <strong>{data.label}</strong>
+
+      {data.kind === 'split' && (
+        <div className="split-preview" aria-label="分岐ルート">
+          <span>ルートA</span>
+          <span>格納先B</span>
+          <span>戻し</span>
+        </div>
+      )}
+
+      {data.memo && <p>{data.memo}</p>}
+
+      <Handle type="source" position={Position.Right} className="route-handle route-handle--source" />
+    </div>
+  );
+}
+
+function RouteEdge(props: EdgeProps<FlowEdge>) {
+  const {
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    markerEnd,
+    data,
+    label,
+    selected,
+  } = props;
+
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 18,
+  });
+
+  const edgeLabel = data?.memo
+    ? `${data.action} / ${data.memo}`
+    : data?.action ?? String(label ?? '');
+
+  return (
+    <>
+      <path
+        id={id}
+        d={edgePath}
+        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''}`}
+        markerEnd={markerEnd}
+      />
+
+      <circle r="4" className="route-particle">
+        <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
+      </circle>
+
+      <circle r="3" className="route-particle route-particle--soft">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
+      </circle>
+
+      <circle r="3" className="route-particle route-particle--soft">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
+      </circle>
+
+      <EdgeLabelRenderer>
+        <div
+          className="route-edge-label"
+          style={{
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+          }}
+        >
+          {edgeLabel}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+function getStorage(mode: SaveMode): Storage | null {
+  if (mode === 'session') {
+    return window.sessionStorage;
+  }
+
+  if (mode === 'local') {
+    return window.localStorage;
+  }
+
+  return null;
+}
+
+function getStorageKey(mode: SaveMode): string {
+  return mode === 'session' ? STORAGE_KEY_SESSION : STORAGE_KEY_LOCAL;
+}
+
+function scanSensitiveText(values: string[]): string[] {
+  const text = values.join('\n');
+  const warnings: string[] = [];
+
+  const checks = [
+    {
+      label: 'Windowsパスらしき文字',
+      pattern: /[a-zA-Z]:\\/,
+    },
+    {
+      label: '共有パスらしき文字',
+      pattern: /\\\\/,
+    },
+    {
+      label: 'URLらしき文字',
+      pattern: /https?:\/\//i,
+    },
+    {
+      label: 'メールアドレス・メンションらしき文字',
+      pattern: /\S+@\S+/,
+    },
+    {
+      label: '実ファイル名らしき拡張子',
+      pattern: /\.(csv|xlsx?|zip|txt|pdf|docx?|pptx?|json|log|bat|sh)\b/i,
+    },
+    {
+      label: 'IPアドレスらしき文字',
+      pattern: /\b(?:\d{1,3}\.){3}\d{1,3}\b/,
+    },
+    {
+      label: '長い識別子らしき文字',
+      pattern: /\b[A-Za-z0-9_-]{24,}\b/,
+    },
+  ];
+
+  checks.forEach((check) => {
+    if (check.pattern.test(text)) {
+      warnings.push(check.label);
+    }
+  });
+
+  return Array.from(new Set(warnings));
+}
+
+function buildRouteSummaries(file: FileRoute): string[] {
+  const nodeMap = new Map(file.nodes.map((node) => [node.id, node]));
+  const outgoingMap = new Map<string, FlowEdge[]>();
+  const incomingCount = new Map<string, number>();
+
+  file.nodes.forEach((node) => {
+    outgoingMap.set(node.id, []);
+    incomingCount.set(node.id, 0);
+  });
+
+  file.edges.forEach((edge) => {
+    outgoingMap.set(edge.source, [...(outgoingMap.get(edge.source) ?? []), edge]);
+    incomingCount.set(edge.target, (incomingCount.get(edge.target) ?? 0) + 1);
+  });
+
+  const startNodes = file.nodes.filter(
+    (node) => node.data.kind === 'source' || (incomingCount.get(node.id) ?? 0) === 0,
+  );
+
+  const summaries: string[] = [];
+
+  const walk = (nodeId: string, routeText: string, visited: Set<string>) => {
+    const node = nodeMap.get(nodeId);
+
+    if (!node) {
+      return;
+    }
+
+    const outgoing = outgoingMap.get(nodeId) ?? [];
+
+    if (outgoing.length === 0 || visited.has(nodeId)) {
+      summaries.push(routeText);
+      return;
+    }
+
+    const nextVisited = new Set(visited);
+    nextVisited.add(nodeId);
+
+    outgoing.forEach((edge) => {
+      const targetNode = nodeMap.get(edge.target);
+
+      if (!targetNode) {
+        summaries.push(routeText);
+        return;
+      }
+
+      const edgeLabel = edge.data?.memo
+        ? `${edge.data.action} / ${edge.data.memo}`
+        : edge.data?.action ?? '移動';
+
+      walk(
+        targetNode.id,
+        `${routeText} --${edgeLabel}→ ${targetNode.data.label}`,
+        nextVisited,
+      );
+    });
+  };
+
+  startNodes.forEach((node) => {
+    walk(node.id, node.data.label, new Set<string>());
+  });
+
+  return summaries.length > 0 ? summaries.slice(0, 12) : ['まだ導線がありません。'];
+}
+
+const INITIAL_TASKS: TaskMap[] = [createTask('タスクA')];
+
+function App() {
+  const [tasks, setTasks] = useState<TaskMap[]>(INITIAL_TASKS);
+  const [activeTaskId, setActiveTaskId] = useState(INITIAL_TASKS[0].id);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
+    INITIAL_TASKS[0].files[0].nodes[0].id,
+  );
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [saveMode, setSaveMode] = useState<SaveMode>('off');
+  const [noticeOpen, setNoticeOpen] = useState(true);
+  const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
+  const [insertKind, setInsertKind] = useState<NodeKind>('operation');
+  const [statusMessage, setStatusMessage] = useState(
+    '保存OFF：この画面の内容は自動保存されません。',
+  );
+
+  const nodeTypes = useMemo<NodeTypes>(
+    () => ({
+      routeCard: RouteNode,
+    }),
+    [],
+  );
+
+  const edgeTypes = useMemo<EdgeTypes>(
+    () => ({
+      route: RouteEdge,
+    }),
+    [],
+  );
+
+  const activeTask = useMemo(
+    () => tasks.find((task) => task.id === activeTaskId) ?? tasks[0],
+    [activeTaskId, tasks],
+  );
+
+  const activeFile = useMemo(() => {
+    return (
+      activeTask.files.find((file) => file.id === activeTask.activeFileId) ??
+      activeTask.files[0]
     );
-  box-shadow: 0 20px 60px rgba(48, 78, 73, 0.1);
-  backdrop-filter: blur(14px);
-}
+  }, [activeTask]);
 
-.eyebrow {
-  margin: 0 0 6px;
-  color: #4f7f77;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
+  const nodes = activeFile.nodes;
+  const edges = activeFile.edges;
 
-.hero h1 {
-  margin: 0;
-  color: #203a37;
-  font-size: clamp(1.7rem, 5vw, 3.35rem);
-  line-height: 1.05;
-}
+  const selectedNode = useMemo(
+    () => nodes.find((node) => node.id === selectedNodeId) ?? null,
+    [nodes, selectedNodeId],
+  );
 
-.hero p {
-  max-width: 800px;
-  margin: 12px 0 0;
-  color: #526966;
-  line-height: 1.8;
-}
+  const selectedEdge = useMemo(
+    () => edges.find((edge) => edge.id === selectedEdgeId) ?? null,
+    [edges, selectedEdgeId],
+  );
 
-.risk-panel {
-  min-width: 190px;
-  padding: 16px;
-  border-radius: 24px;
-  text-align: center;
-}
+  const selectedNodeOutgoingCount = selectedNode
+    ? edges.filter((edge) => edge.source === selectedNode.id).length
+    : 0;
 
-.risk-panel span,
-.risk-panel strong {
-  display: block;
-}
+  const selectedNodeCanStartRoute =
+    !!selectedNode &&
+    (selectedNode.data.kind === 'split' || selectedNodeOutgoingCount === 0);
 
-.risk-panel span {
-  margin-bottom: 4px;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-}
+  const routeSummaries = useMemo(() => buildRouteSummaries(activeFile), [activeFile]);
 
-.risk-panel strong {
-  font-size: 0.95rem;
-}
+  const securityWarnings = useMemo(() => {
+    const values = tasks.flatMap((task) => [
+      task.title,
+      task.summary,
+      ...task.files.flatMap((file) => [
+        file.label,
+        ...file.nodes.flatMap((node) => [
+          node.data.label,
+          node.data.memo,
+          node.data.action,
+          node.data.kind,
+        ]),
+        ...file.edges.flatMap((edge) => [
+          String(edge.label ?? ''),
+          edge.data?.action ?? '',
+          edge.data?.memo ?? '',
+        ]),
+      ]),
+    ]);
 
-.risk-panel.safe {
-  color: #27544d;
-  background: #dcf7ed;
-  border: 1px solid rgba(59, 131, 115, 0.24);
-}
+    return scanSensitiveText(values.map(String));
+  }, [tasks]);
 
-.risk-panel.danger {
-  color: #7b3126;
-  background: #ffe5dc;
-  border: 1px solid rgba(191, 83, 54, 0.28);
-}
+  const hasSecurityWarnings = securityWarnings.length > 0;
 
-.security-strip {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: center;
-  margin: 14px 0;
-  padding: 14px 16px;
-  border: 1px solid rgba(63, 96, 91, 0.16);
-  border-radius: 22px;
-  background: rgba(243, 252, 249, 0.78);
-}
+  const canCreateOutgoingFrom = (sourceId: string) => {
+    const sourceNode = nodes.find((node) => node.id === sourceId);
 
-.security-strip div {
-  display: grid;
-  gap: 4px;
-}
+    if (!sourceNode) {
+      return false;
+    }
 
-.security-strip strong {
-  color: #244340;
-}
+    if (sourceNode.data.kind === 'split') {
+      return true;
+    }
 
-.security-strip span {
-  color: #5d706c;
-  font-size: 0.92rem;
-}
+    const outgoingCount = edges.filter((edge) => edge.source === sourceId).length;
+    return outgoingCount === 0;
+  };
 
-.security-strip button,
-.storage-actions button,
-.primary-button,
-.add-tab-button,
-.node-actions button,
-.split-actions button,
-.insert-box button {
-  border: 0;
-  border-radius: 999px;
-  padding: 10px 14px;
-  color: #214340;
-  background: #d9f0ea;
-  font-weight: 800;
-}
-
-.primary-button {
-  width: 100%;
-  margin-top: 16px;
-  padding: 14px 18px;
-  color: #f8fffc;
-  background: #2f7166;
-}
-
-.danger-ghost-button {
-  border: 1px solid rgba(162, 80, 56, 0.26);
-  border-radius: 999px;
-  padding: 10px 14px;
-  color: #82382b;
-  background: #ffe6dc;
-  font-weight: 850;
-}
-
-.danger-ghost-button:hover:not(:disabled) {
-  background: #ffd8ca;
-  box-shadow: 0 10px 24px rgba(130, 56, 43, 0.12);
-}
-
-.danger-ghost-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.warning-box {
-  margin: 14px 0;
-  padding: 16px;
-  border: 1px solid rgba(171, 75, 48, 0.24);
-  border-radius: 22px;
-  color: #743025;
-  background: #fff1eb;
-}
-
-.warning-box ul {
-  margin: 10px 0 0;
-  padding-left: 20px;
-}
-
-.task-board,
-.file-board,
-.connect-hint,
-.route-summary-card {
-  margin: 14px 0;
-  padding: 14px;
-  border: 1px solid rgba(72, 108, 101, 0.18);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.62);
-  box-shadow: 0 16px 40px rgba(48, 78, 73, 0.08);
-  backdrop-filter: blur(14px);
-}
-
-.tabs-row,
-.file-tabs {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.tabs-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.tab-button,
-.file-tab {
-  flex: 0 0 auto;
-  border: 1px solid rgba(61, 99, 91, 0.16);
-  border-radius: 999px;
-  padding: 10px 14px;
-  color: #3d5d58;
-  background: rgba(247, 255, 252, 0.9);
-  font-weight: 850;
-}
-
-.tab-button.is-active,
-.file-tab.is-active {
-  color: #f8fffc;
-  background: #2f7166;
-  border-color: rgba(47, 113, 102, 0.2);
-}
-
-.add-tab-button {
-  flex: 0 0 auto;
-  background: #e6f3ef;
-}
-
-.task-meta,
-.file-meta {
-  display: grid;
-  grid-template-columns: minmax(180px, 280px) minmax(220px, 1fr) auto;
-  gap: 10px;
-  align-items: end;
-  margin-top: 12px;
-}
-
-.file-meta {
-  grid-template-columns: minmax(180px, 360px) auto;
-}
-
-.task-meta label,
-.file-meta label {
-  display: grid;
-  gap: 6px;
-  color: #314844;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.task-meta input,
-.file-meta input {
-  width: 100%;
-  border: 1px solid rgba(70, 107, 100, 0.2);
-  border-radius: 16px;
-  padding: 11px 12px;
-  color: #203033;
-  background: rgba(250, 255, 253, 0.9);
-  outline: none;
-}
-
-.danger-outline-button {
-  border: 1px solid rgba(162, 80, 56, 0.22);
-  border-radius: 999px;
-  padding: 11px 14px;
-  color: #7b3529;
-  background: rgba(255, 239, 232, 0.9);
-  font-weight: 850;
-}
-
-.route-summary-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-
-.route-summary-heading p {
-  margin: 0 0 4px;
-  color: #679188;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.route-summary-heading h2 {
-  margin: 0;
-  color: #243b38;
-  font-size: 1.08rem;
-}
-
-.route-summary-heading span {
-  flex: 0 0 auto;
-  padding: 7px 10px;
-  border-radius: 999px;
-  color: #2d5b54;
-  background: #e2f4ef;
-  font-size: 0.78rem;
-  font-weight: 900;
-}
-
-.route-summary-card ol {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0 0;
-  padding-left: 22px;
-}
-
-.route-summary-card li {
-  color: #445d59;
-  font-size: 0.9rem;
-  line-height: 1.7;
-}
-
-.connect-hint {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  color: #244340;
-  background: #e6f7f1;
-}
-
-.connect-hint strong {
-  flex: 0 0 auto;
-}
-
-.connect-hint span {
-  flex: 1;
-  color: #526966;
-}
-
-.connect-hint button {
-  border: 0;
-  border-radius: 999px;
-  padding: 9px 12px;
-  color: #2f514b;
-  background: #ffffff;
-  font-weight: 800;
-}
-
-.workspace {
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 320px;
-  gap: 14px;
-  align-items: stretch;
-  min-height: 680px;
-}
-
-.parts-panel,
-.flow-card,
-.edit-panel {
-  border: 1px solid rgba(72, 108, 101, 0.18);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: 0 20px 60px rgba(48, 78, 73, 0.1);
-  backdrop-filter: blur(14px);
-}
-
-.parts-panel,
-.edit-panel {
-  padding: 16px;
-}
-
-.panel-heading p {
-  margin: 0 0 4px;
-  color: #679188;
-  font-size: 0.74rem;
-  font-weight: 900;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.panel-heading h2 {
-  margin: 0 0 14px;
-  color: #243b38;
-  font-size: 1.2rem;
-}
-
-.parts-list {
-  display: grid;
-  gap: 10px;
-}
-
-.part-button {
-  display: grid;
-  grid-template-columns: 42px 1fr;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-  padding: 12px;
-  border: 1px solid rgba(70, 107, 100, 0.16);
-  border-radius: 18px;
-  color: #213533;
-  background: rgba(245, 253, 250, 0.88);
-  text-align: left;
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
-}
-
-.part-button:hover {
-  transform: translateY(-2px);
-  background: #ffffff;
-  box-shadow: 0 12px 26px rgba(55, 86, 80, 0.12);
-}
-
-.part-button span {
-  display: grid;
-  width: 42px;
-  height: 38px;
-  place-items: center;
-  border-radius: 14px;
-  background: #dff3ee;
-  color: #2c625a;
-  font-size: 0.72rem;
-  font-weight: 950;
-  letter-spacing: 0.03em;
-}
-
-.part-button strong,
-.part-button small {
-  display: block;
-}
-
-.part-button small {
-  margin-top: 3px;
-  color: #6c7d7a;
-  font-size: 0.78rem;
-}
-
-.flow-card {
-  overflow: hidden;
-}
-
-.flow-toolbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid rgba(70, 107, 100, 0.14);
-}
-
-.flow-toolbar strong,
-.flow-toolbar span {
-  display: block;
-}
-
-.flow-toolbar strong {
-  color: #243b38;
-}
-
-.flow-toolbar span {
-  margin-top: 2px;
-  color: #667a76;
-  font-size: 0.82rem;
-}
-
-.flow-toolbar-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.flow-area {
-  height: 620px;
-  background:
-    linear-gradient(rgba(242, 250, 247, 0.72), rgba(242, 250, 247, 0.72)),
-    repeating-linear-gradient(
-      90deg,
-      rgba(72, 108, 101, 0.07) 0,
-      rgba(72, 108, 101, 0.07) 1px,
-      transparent 1px,
-      transparent 28px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(72, 108, 101, 0.06) 0,
-      rgba(72, 108, 101, 0.06) 1px,
-      transparent 1px,
-      transparent 28px
+  const updateActiveTask = (patch: Partial<TaskMap>) => {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === activeTaskId
+          ? {
+              ...task,
+              ...patch,
+            }
+          : task,
+      ),
     );
-}
-
-.route-node {
-  position: relative;
-  width: 190px;
-  min-height: 112px;
-  padding: 13px;
-  border: 1px solid rgba(63, 96, 91, 0.2);
-  border-radius: 18px;
-  color: #213533;
-  box-shadow: 0 14px 34px rgba(51, 78, 72, 0.11);
-}
-
-.route-node.is-selected {
-  box-shadow:
-    0 0 0 4px rgba(47, 113, 102, 0.18),
-    0 14px 34px rgba(51, 78, 72, 0.14);
-}
-
-.route-node--source {
-  background: linear-gradient(135deg, #d9f4ee, #f3fff8);
-}
-
-.route-node--device {
-  background: linear-gradient(135deg, #e2f0ff, #f5fbff);
-}
-
-.route-node--service {
-  background: linear-gradient(135deg, #e9f7ff, #f7fdff);
-}
-
-.route-node--operation {
-  background: linear-gradient(135deg, #fff2cf, #fffaf0);
-}
-
-.route-node--tool {
-  background: linear-gradient(135deg, #e8ecff, #fbfcff);
-}
-
-.route-node--split {
-  background: linear-gradient(135deg, #ede7ff, #fbf8ff);
-  border-style: dashed;
-}
-
-.route-node--storage {
-  background: linear-gradient(135deg, #dff4ff, #f7fdff);
-}
-
-.route-node--memo {
-  background: linear-gradient(135deg, #ffe8dc, #fff8f4);
-}
-
-.route-node__top {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.route-node__top span,
-.route-node__top em {
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.route-node__top span {
-  color: #4e716c;
-}
-
-.route-node__top em {
-  padding: 4px 8px;
-  border-radius: 999px;
-  color: #2d5b54;
-  background: rgba(255, 255, 255, 0.66);
-  font-style: normal;
-}
-
-.route-node strong {
-  display: block;
-  color: #203a37;
-  font-size: 1rem;
-  line-height: 1.35;
-}
-
-.route-node p {
-  display: -webkit-box;
-  margin: 8px 0 0;
-  overflow: hidden;
-  color: #657773;
-  font-size: 0.76rem;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.split-preview {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-top: 9px;
-}
-
-.split-preview span {
-  padding: 4px 7px;
-  border-radius: 999px;
-  color: #4b3e65;
-  background: rgba(255, 255, 255, 0.72);
-  font-size: 0.68rem;
-  font-weight: 900;
-}
-
-.route-handle {
-  width: 42px;
-  height: 42px;
-  border: 0;
-  background: transparent;
-}
-
-.route-handle::after {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 17px;
-  height: 17px;
-  border: 3px solid #ffffff;
-  border-radius: 50%;
-  background: #2f7166;
-  box-shadow:
-    0 0 0 6px rgba(47, 113, 102, 0.11),
-    0 8px 18px rgba(34, 83, 75, 0.22);
-  content: "";
-  transform: translate(-50%, -50%);
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    background 0.16s ease;
-}
-
-.route-handle:hover::after,
-.route-handle.connectingfrom::after,
-.route-handle.connectingto::after {
-  background: #35b87d;
-  box-shadow:
-    0 0 0 10px rgba(53, 184, 125, 0.16),
-    0 0 18px rgba(53, 184, 125, 0.45);
-  transform: translate(-50%, -50%) scale(1.12);
-}
-
-.route-handle--target {
-  left: -24px;
-}
-
-.route-handle--source {
-  right: -24px;
-}
-
-.react-flow__node {
-  border: 0;
-  background: transparent;
-}
-
-.route-edge-path {
-  fill: none;
-  stroke: #2f7166;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 10 12;
-  animation: route-flow 1.1s linear infinite;
-  filter: drop-shadow(0 0 3px rgba(47, 113, 102, 0.18));
-}
-
-.route-edge-path.is-selected {
-  stroke: #174d44;
-  stroke-width: 4;
-}
-
-.route-particle {
-  fill: #35d487;
-  opacity: 0.95;
-  filter:
-    drop-shadow(0 0 4px rgba(53, 212, 135, 0.8))
-    drop-shadow(0 0 10px rgba(53, 212, 135, 0.35));
-}
-
-.route-particle--soft {
-  fill: #6ee7ad;
-  opacity: 0.72;
-}
-
-.route-edge-label {
-  position: absolute;
-  z-index: 5;
-  padding: 5px 9px;
-  border: 1px solid rgba(47, 113, 102, 0.18);
-  border-radius: 999px;
-  color: #26423e;
-  background: rgba(247, 255, 252, 0.96);
-  box-shadow: 0 8px 18px rgba(48, 78, 73, 0.1);
-  font-size: 0.72rem;
-  font-weight: 900;
-  pointer-events: all;
-  white-space: nowrap;
-}
-
-@keyframes route-flow {
-  from {
-    stroke-dashoffset: 0;
-  }
-
-  to {
-    stroke-dashoffset: -44;
-  }
-}
-
-.empty-edit {
-  padding: 16px;
-  border-radius: 20px;
-  color: #60726f;
-  background: rgba(235, 248, 244, 0.8);
-  line-height: 1.7;
-}
-
-.edit-form {
-  display: grid;
-  gap: 12px;
-}
-
-.selected-card {
-  display: grid;
-  gap: 4px;
-  padding: 12px;
-  border: 1px solid rgba(70, 107, 100, 0.14);
-  border-radius: 18px;
-  background: rgba(242, 251, 248, 0.8);
-}
-
-.selected-card span {
-  color: #679188;
-  font-size: 0.74rem;
-  font-weight: 900;
-}
-
-.selected-card strong {
-  color: #243b38;
-}
-
-.edit-form label,
-.storage-box label,
-.insert-box label {
-  display: grid;
-  gap: 7px;
-  color: #314844;
-  font-size: 0.84rem;
-  font-weight: 800;
-}
-
-.edit-form input,
-.edit-form textarea,
-.edit-form select,
-.storage-box select,
-.insert-box select {
-  width: 100%;
-  border: 1px solid rgba(70, 107, 100, 0.2);
-  border-radius: 16px;
-  padding: 11px 12px;
-  color: #203033;
-  background: rgba(250, 255, 253, 0.9);
-  outline: none;
-}
-
-.edit-form textarea {
-  resize: vertical;
-  line-height: 1.6;
-}
-
-.edit-form input:focus,
-.edit-form textarea:focus,
-.edit-form select:focus,
-.storage-box select:focus,
-.task-meta input:focus,
-.file-meta input:focus,
-.insert-box select:focus {
-  border-color: rgba(47, 113, 102, 0.48);
-  box-shadow: 0 0 0 4px rgba(47, 113, 102, 0.12);
-}
-
-.node-actions {
-  display: grid;
-  gap: 8px;
-}
-
-.node-actions button {
-  color: #f8fffc;
-  background: #2f7166;
-}
-
-.route-rule-message {
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(92, 73, 122, 0.18);
-  border-radius: 16px;
-  color: #5a4b72;
-  background: rgba(248, 244, 255, 0.8);
-  font-size: 0.78rem;
-  font-weight: 800;
-  line-height: 1.6;
-}
-
-.split-actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  padding: 12px;
-  border: 1px dashed rgba(92, 73, 122, 0.24);
-  border-radius: 18px;
-  background: rgba(248, 244, 255, 0.8);
-}
-
-.split-actions p {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #5a4b72;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.split-actions button {
-  padding: 10px 8px;
-  color: #4a3d61;
-  background: #ffffff;
-}
-
-.insert-box {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px dashed rgba(47, 113, 102, 0.24);
-  border-radius: 18px;
-  background: rgba(230, 247, 241, 0.72);
-}
-
-.insert-box p {
-  margin: 0;
-  color: #2f514b;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.insert-box button {
-  color: #f8fffc;
-  background: #2f7166;
-}
-
-.storage-box {
-  display: grid;
-  gap: 12px;
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(70, 107, 100, 0.14);
-}
-
-.storage-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.storage-actions button {
-  flex: 1;
-}
-
-.storage-actions .danger-button {
-  color: #82382b;
-  background: #ffe2d8;
-}
-
-.storage-box p {
-  margin: 0;
-  color: #657873;
-  font-size: 0.82rem;
-  line-height: 1.6;
-}
-
-/* 注意喚起モーダル：PC/SPとも中央寄せの縦長カード */
-.notice-backdrop {
-  position: fixed;
-  z-index: 9999;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100svh;
-  padding: 16px;
-  overflow: hidden;
-  background: rgba(18, 38, 35, 0.42);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.notice-card {
-  width: min(560px, calc(100vw - 32px));
-  max-height: calc(100svh - 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.52);
-  border-radius: 30px;
-  background:
-    radial-gradient(circle at top left, rgba(219, 249, 240, 0.95), transparent 22rem),
-    #ffffff;
-  box-shadow: 0 28px 80px rgba(18, 38, 35, 0.25);
-}
-
-.notice-kicker {
-  margin: 0 0 8px;
-  color: #4c8278;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.notice-card h1 {
-  margin: 0 0 10px;
-  color: #203a37;
-  font-size: clamp(1.45rem, 6vw, 2.3rem);
-}
-
-.notice-card p {
-  margin: 0 0 14px;
-  color: #556d69;
-  line-height: 1.8;
-}
-
-.notice-ng,
-.notice-ok {
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 18px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.notice-ng {
-  color: #743025;
-  background: #fff0ea;
-}
-
-.notice-ok {
-  color: #27544d;
-  background: #e5f8f2;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .route-edge-path {
-    animation: none;
-  }
-
-  .route-particle {
-    display: none;
-  }
-}
-
-@media (max-width: 1100px) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .parts-panel {
-    order: 2;
-  }
-
-  .flow-card {
-    order: 1;
-  }
-
-  .edit-panel {
-    order: 3;
-  }
-
-  .parts-list {
-    display: flex;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-
-  .part-button {
-    min-width: 180px;
-  }
-
-  .flow-area {
-    height: 580px;
-  }
-
-  .task-meta {
-    grid-template-columns: 1fr;
-  }
-
-  .file-meta {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .app-shell {
-    padding: 12px;
-  }
-
-  .hero {
-    grid-template-columns: 1fr;
-    padding: 18px;
-    border-radius: 24px;
-  }
-
-  .risk-panel {
-    min-width: auto;
-  }
-
-  .security-strip {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .security-strip button {
-    width: 100%;
-  }
-
-  .tabs-row,
-  .file-tabs,
-  .connect-hint {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .tabs-scroll {
-    width: 100%;
-  }
-
-  .add-tab-button {
-    width: 100%;
-  }
-
-  .route-summary-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .workspace {
-    gap: 12px;
-  }
-
-  .flow-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .flow-toolbar-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .danger-ghost-button {
-    width: 100%;
-  }
-
-  .flow-area {
-    height: 62vh;
-    min-height: 480px;
-  }
-
-  .parts-panel,
-  .flow-card,
-  .edit-panel {
-    border-radius: 24px;
-  }
-
-  .edit-panel {
-    position: sticky;
-    z-index: 20;
-    bottom: 10px;
-    max-height: 78vh;
-    overflow: auto;
-    border-color: rgba(47, 113, 102, 0.24);
-    box-shadow: 0 16px 60px rgba(28, 58, 52, 0.24);
-  }
-
-  .split-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .storage-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .notice-backdrop {
-    place-items: center;
-    padding: 14px;
-    padding-top: max(14px, env(safe-area-inset-top));
-    padding-bottom: max(14px, env(safe-area-inset-bottom));
-  }
-
-  .notice-card {
-    width: min(360px, calc(100vw - 28px));
-    max-height: calc(100svh - 28px);
-    margin: 0 auto;
-    padding: 18px;
-    border-radius: 24px;
-  }
-
-  .notice-card h1 {
-    font-size: 1.32rem;
-    line-height: 1.25;
-  }
-
-  .notice-card p,
-  .notice-ng,
-  .notice-ok {
-    font-size: 0.86rem;
-    line-height: 1.65;
-  }
-
-  .notice-kicker {
-    font-size: 0.7rem;
-  }
-
-  .notice-card .primary-button {
-    position: static;
-    width: 100%;
-    margin-top: 14px;
-  }
-}
+  };
+
+  const updateActiveFile = (updater: (file: FileRoute) => FileRoute) => {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) => {
+        if (task.id !== activeTaskId) {
+          return task;
+        }
+
+        return {
+          ...task,
+          files: task.files.map((file) =>
+            file.id === task.activeFileId ? updater(file) : file,
+          ),
+        };
+      }),
+    );
+  };
+
+  const switchTask = (taskId: string) => {
+    const nextTask = tasks.find((task) => task.id === taskId);
+
+    if (!nextTask) {
+      return;
+    }
+
+    const nextFile =
+      nextTask.files.find((file) => file.id === nextTask.activeFileId) ??
+      nextTask.files[0];
+
+    setActiveTaskId(taskId);
+    setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+  };
+
+  const addTask = () => {
+    const nextTask = createTask(`タスク${tasks.length + 1}`);
+    setTasks((currentTasks) => [...currentTasks, nextTask]);
+    setActiveTaskId(nextTask.id);
+    setSelectedNodeId(nextTask.files[0].nodes[0]?.id ?? null);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+    setStatusMessage('新しいタスクを追加しました。');
+  };
+
+  const removeActiveTask = () => {
+    if (tasks.length <= 1) {
+      setStatusMessage('タスクは最低1つ必要です。');
+      return;
+    }
+
+    const ok = window.confirm('現在のタスクを削除します。');
+
+    if (!ok) {
+      return;
+    }
+
+    const remainingTasks = tasks.filter((task) => task.id !== activeTaskId);
+    const nextTask = remainingTasks[0];
+    const nextFile = nextTask.files[0];
+
+    setTasks(remainingTasks);
+    setActiveTaskId(nextTask.id);
+    setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+    setStatusMessage('タスクを削除しました。');
+  };
+
+  const switchFile = (fileId: string) => {
+    const nextFile = activeTask.files.find((file) => file.id === fileId);
+
+    if (!nextFile) {
+      return;
+    }
+
+    updateActiveTask({
+      activeFileId: fileId,
+    });
+
+    setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+  };
+
+  const addFile = () => {
+    const nextFile = createStarterFile(`ファイル種別${activeTask.files.length + 1}`);
+
+    setTasks((currentTasks) =>
+      currentTasks.map((task) => {
+        if (task.id !== activeTaskId) {
+          return task;
+        }
+
+        return {
+          ...task,
+          activeFileId: nextFile.id,
+          files: [...task.files, nextFile],
+        };
+      }),
+    );
+
+    setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+    setStatusMessage('このタスクにファイル導線を追加しました。');
+  };
+
+  const removeActiveFile = () => {
+    if (activeTask.files.length <= 1) {
+      setStatusMessage('ファイル導線は最低1つ必要です。');
+      return;
+    }
+
+    const ok = window.confirm('現在のファイル導線を削除します。');
+
+    if (!ok) {
+      return;
+    }
+
+    const remainingFiles = activeTask.files.filter((file) => file.id !== activeFile.id);
+    const nextFile = remainingFiles[0];
+
+    setTasks((currentTasks) =>
+      currentTasks.map((task) => {
+        if (task.id !== activeTaskId) {
+          return task;
+        }
+
+        return {
+          ...task,
+          activeFileId: nextFile.id,
+          files: remainingFiles,
+        };
+      }),
+    );
+
+    setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+    setStatusMessage('ファイル導線を削除しました。');
+  };
+
+  const renameActiveFile = (label: string) => {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) => {
+        if (task.id !== activeTaskId) {
+          return task;
+        }
+
+        return {
+          ...task,
+          files: task.files.map((file) =>
+            file.id === task.activeFileId
+              ? {
+                  ...file,
+                  label,
+                }
+              : file,
+          ),
+        };
+      }),
+    );
+  };
+
+  const onNodesChange = (changes: NodeChange<FlowNode>[]) => {
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: applyNodeChanges(changes, file.nodes),
+    }));
+  };
+
+  const onEdgesChange = (changes: EdgeChange<FlowEdge>[]) => {
+    updateActiveFile((file) => ({
+      ...file,
+      edges: applyEdgeChanges(changes, file.edges),
+    }));
+  };
+
+  const onConnect: OnConnect = (connection: Connection) => {
+    const sourceId = connection.source;
+    const targetId = connection.target;
+
+    if (!sourceId || !targetId) {
+      return;
+    }
+
+    if (sourceId === targetId) {
+      setStatusMessage('同じパーツ同士は接続できません。');
+      return;
+    }
+
+    if (!canCreateOutgoingFrom(sourceId)) {
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
+      return;
+    }
+
+    const alreadyConnected = edges.some(
+      (edge) => edge.source === sourceId && edge.target === targetId,
+    );
+
+    if (alreadyConnected) {
+      setStatusMessage('そのパーツ同士はすでに接続されています。');
+      return;
+    }
+
+    updateActiveFile((file) => ({
+      ...file,
+      edges: addEdge(createEdge(sourceId, targetId, '移動'), file.edges),
+    }));
+
+    setStatusMessage('導線を追加しました。');
+  };
+
+  const addNode = (template: NodeTemplate) => {
+    const newNode: FlowNode = {
+      id: createId(`node-${template.kind}`),
+      type: 'routeCard',
+      position: {
+        x: 90 + nodes.length * 34,
+        y: 170 + nodes.length * 28,
+      },
+      data: {
+        label: template.title,
+        kind: template.kind,
+        action: template.action,
+        memo: template.description,
+      },
+    };
+
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: [...file.nodes, newNode],
+    }));
+
+    setSelectedNodeId(newNode.id);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+  };
+
+  const updateNodeData = (nodeId: string, patch: Partial<FlowNodeData>) => {
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: file.nodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                ...patch,
+              },
+            }
+          : node,
+      ),
+    }));
+  };
+
+  const updateEdgeData = (edgeId: string, patch: Partial<FlowEdgeData>) => {
+    updateActiveFile((file) => ({
+      ...file,
+      edges: file.edges.map((edge) => {
+        if (edge.id !== edgeId) {
+          return edge;
+        }
+
+        const nextData: FlowEdgeData = {
+          action: edge.data?.action ?? '移動',
+          memo: edge.data?.memo ?? '',
+          ...patch,
+        };
+
+        return {
+          ...edge,
+          data: nextData,
+          label: nextData.memo ? `${nextData.action} / ${nextData.memo}` : nextData.action,
+        };
+      }),
+    }));
+  };
+
+  const connectNodes = (sourceId: string, targetId: string, label: string) => {
+    if (sourceId === targetId) {
+      setStatusMessage('同じパーツ同士は接続できません。');
+      return;
+    }
+
+    if (!canCreateOutgoingFrom(sourceId)) {
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
+      setConnectMode(null);
+      return;
+    }
+
+    const alreadyConnected = edges.some(
+      (edge) => edge.source === sourceId && edge.target === targetId,
+    );
+
+    if (alreadyConnected) {
+      setStatusMessage('そのパーツ同士はすでに接続されています。');
+      setConnectMode(null);
+      return;
+    }
+
+    updateActiveFile((file) => ({
+      ...file,
+      edges: [...file.edges, createEdge(sourceId, targetId, label)],
+    }));
+
+    setConnectMode(null);
+    setSelectedNodeId(targetId);
+    setSelectedEdgeId(null);
+    setStatusMessage(`「${label}」で接続しました。`);
+  };
+
+  const addSplitRoute = (routeLabel: SplitRouteLabel) => {
+    if (!selectedNode) {
+      return;
+    }
+
+    if (selectedNode.data.kind !== 'split') {
+      setStatusMessage('複数ルートを作る場合は「分岐」パーツを選んでください。');
+      return;
+    }
+
+    const routeIndex = edges.filter((edge) => edge.source === selectedNode.id).length;
+
+    const routeSettings: Record<
+      SplitRouteLabel,
+      {
+        kind: NodeKind;
+        action: ActionKind;
+        label: string;
+        memo: string;
+      }
+    > = {
+      ルートA: {
+        kind: 'operation',
+        action: '加工',
+        label: '別工程A',
+        memo: '分岐後に進む別ルート。',
+      },
+      ルートB: {
+        kind: 'operation',
+        action: '加工',
+        label: '別工程B',
+        memo: '分岐後に進む別ルート。',
+      },
+      格納先A: {
+        kind: 'storage',
+        action: '格納',
+        label: '格納先A',
+        memo: '分岐後の格納先。',
+      },
+      格納先B: {
+        kind: 'storage',
+        action: '格納',
+        label: '格納先B',
+        memo: '分岐後の別格納先。',
+      },
+      別ファイル生成: {
+        kind: 'operation',
+        action: '加工',
+        label: '別ファイル生成',
+        memo: '加工により別ファイルが発生する流れ。',
+      },
+      再加工: {
+        kind: 'operation',
+        action: '戻し',
+        label: '再加工',
+        memo: '前工程へ戻す、または再処理する。',
+      },
+      戻し: {
+        kind: 'operation',
+        action: '戻し',
+        label: '戻し先',
+        memo: '前工程へ戻す、または再処理する。',
+      },
+      保留: {
+        kind: 'memo',
+        action: '保留',
+        label: '保留メモ',
+        memo: '一時停止・確認待ち・例外など。',
+      },
+    };
+
+    const setting = routeSettings[routeLabel];
+
+    const newNode: FlowNode = {
+      id: createId(`node-${setting.kind}`),
+      type: 'routeCard',
+      position: {
+        x: selectedNode.position.x + 300,
+        y: selectedNode.position.y + routeIndex * 150,
+      },
+      data: {
+        label: setting.label,
+        kind: setting.kind,
+        action: setting.action,
+        memo: setting.memo,
+      },
+    };
+
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: [...file.nodes, newNode],
+      edges: [...file.edges, createEdge(selectedNode.id, newNode.id, routeLabel)],
+    }));
+
+    setSelectedNodeId(newNode.id);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+    setStatusMessage(`分岐から「${routeLabel}」を追加しました。`);
+  };
+
+  const insertNodeOnSelectedEdge = () => {
+    if (!selectedEdge) {
+      return;
+    }
+
+    const template = NODE_TEMPLATES.find((item) => item.kind === insertKind) ?? NODE_TEMPLATES[2];
+    const sourceNode = nodes.find((node) => node.id === selectedEdge.source);
+    const targetNode = nodes.find((node) => node.id === selectedEdge.target);
+
+    if (!sourceNode || !targetNode) {
+      setStatusMessage('挿入先の導線を取得できませんでした。');
+      return;
+    }
+
+    const newNode: FlowNode = {
+      id: createId(`node-${template.kind}`),
+      type: 'routeCard',
+      position: {
+        x: (sourceNode.position.x + targetNode.position.x) / 2,
+        y: (sourceNode.position.y + targetNode.position.y) / 2 + 70,
+      },
+      data: {
+        label: template.title,
+        kind: template.kind,
+        action: template.action,
+        memo: template.description,
+      },
+    };
+
+    const firstEdge = createEdge(
+      selectedEdge.source,
+      newNode.id,
+      selectedEdge.data?.action ?? '移動',
+      selectedEdge.data?.memo ?? '',
+    );
+    const secondEdge = createEdge(newNode.id, selectedEdge.target, template.action);
+
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: [...file.nodes, newNode],
+      edges: [
+        ...file.edges.filter((edge) => edge.id !== selectedEdge.id),
+        firstEdge,
+        secondEdge,
+      ],
+    }));
+
+    setSelectedNodeId(newNode.id);
+    setSelectedEdgeId(null);
+    setConnectMode(null);
+    setStatusMessage('導線の間にパーツを挿入しました。');
+  };
+
+  const removeSelected = () => {
+    if (selectedNodeId) {
+      updateActiveFile((file) => ({
+        ...file,
+        nodes: file.nodes.filter((node) => node.id !== selectedNodeId),
+        edges: file.edges.filter(
+          (edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId,
+        ),
+      }));
+
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      setConnectMode(null);
+      return;
+    }
+
+    if (selectedEdgeId) {
+      updateActiveFile((file) => ({
+        ...file,
+        edges: file.edges.filter((edge) => edge.id !== selectedEdgeId),
+      }));
+
+      setSelectedEdgeId(null);
+      setConnectMode(null);
+    }
+  };
+
+  const saveDraft = () => {
+    if (saveMode === 'off') {
+      setStatusMessage('保存OFF：保存する場合は「一時保存」か「端末保存」を選んでください。');
+      return;
+    }
+
+    if (hasSecurityWarnings) {
+      setStatusMessage('NG入力の可能性があります。抽象名に置き換えるまで保存しません。');
+      return;
+    }
+
+    const storage = getStorage(saveMode);
+
+    if (!storage) {
+      return;
+    }
+
+    const payload = JSON.stringify({
+      tasks,
+      activeTaskId,
+      savedAt: new Date().toISOString(),
+    });
+
+    storage.setItem(getStorageKey(saveMode), payload);
+
+    setStatusMessage(
+      saveMode === 'session'
+        ? '一時保存しました。ブラウザを閉じると消える可能性があります。'
+        : 'この端末に保存しました。共有端末では使わないでください。',
+    );
+  };
+
+  const loadDraft = () => {
+    if (saveMode === 'off') {
+      setStatusMessage('読み込み先を「一時保存」か「端末保存」に変更してください。');
+      return;
+    }
+
+    const storage = getStorage(saveMode);
+    const raw = storage?.getItem(getStorageKey(saveMode));
+
+    if (!raw) {
+      setStatusMessage('読み込める保存データがありません。');
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        tasks?: TaskMap[];
+        activeTaskId?: string;
+      };
+
+      if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+        throw new Error('Invalid draft format');
+      }
+
+      const nextTaskId = parsed.activeTaskId ?? parsed.tasks[0].id;
+      const nextTask = parsed.tasks.find((task) => task.id === nextTaskId) ?? parsed.tasks[0];
+      const nextFile =
+        nextTask.files.find((file) => file.id === nextTask.activeFileId) ?? nextTask.files[0];
+
+      setTasks(parsed.tasks);
+      setActiveTaskId(nextTask.id);
+      setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
+      setSelectedEdgeId(null);
+      setConnectMode(null);
+      setStatusMessage('保存データを読み込みました。');
+    } catch {
+      setStatusMessage('保存データの読み込みに失敗しました。');
+    }
+  };
+
+  const resetMap = () => {
+    const ok = window.confirm('現在のマップを初期状態に戻し、保存データも削除します。');
+
+    if (!ok) {
+      return;
+    }
+
+    window.sessionStorage.removeItem(STORAGE_KEY_SESSION);
+    window.localStorage.removeItem(STORAGE_KEY_LOCAL);
+
+    const nextTasks = [createTask('タスクA')];
+
+    setTasks(nextTasks);
+    setActiveTaskId(nextTasks[0].id);
+    setSelectedNodeId(nextTasks[0].files[0].nodes[0]?.id ?? null);
+    setSelectedEdgeId(null);
+    setSaveMode('off');
+    setConnectMode(null);
+    setStatusMessage('初期状態に戻しました。保存データも削除済みです。');
+  };
+
+  useEffect(() => {
+    if (saveMode === 'off' || hasSecurityWarnings) {
+      return;
+    }
+
+    const storage = getStorage(saveMode);
+
+    if (!storage) {
+      return;
+    }
+
+    const payload = JSON.stringify({
+      tasks,
+      activeTaskId,
+      savedAt: new Date().toISOString(),
+    });
+
+    storage.setItem(getStorageKey(saveMode), payload);
+  }, [activeTaskId, hasSecurityWarnings, saveMode, tasks]);
+
+  return (
+    <main className="app-shell">
+      {noticeOpen && (
+        <div className="notice-backdrop" role="dialog" aria-modal="true">
+          <section className="notice-card">
+            <p className="notice-kicker">Pathless Map 起動前の確認</p>
+            <h1>機密情報を入力しないでください</h1>
+            <p>
+              このアプリは、実際の端末名・ファイル名・フォルダパス・URL・顧客名・個人名などを
+              入力しない前提のファイル導線整理ツールです。
+            </p>
+            <div className="notice-ng">
+              NG：実パス / 実ファイル名 / 実端末名 / 実チャンネル名 / URL / 顧客名
+            </div>
+            <div className="notice-ok">
+              OK：取得元A / 端末A / 一般サービスA / 工程A / ツールA / 格納先Y
+            </div>
+            <button className="primary-button" onClick={() => setNoticeOpen(false)}>
+              理解しました。抽象名のみで作成する
+            </button>
+          </section>
+        </div>
+      )}
+
+      <header className="hero">
+        <div>
+          <p className="eyebrow">機密を入れないファイル導線整理ツール</p>
+          <h1>Pathless Map</h1>
+          <p>
+            具体名ではなく、流れを見る。実パスではなく、導線を見る。
+            ファイル名ではなく、役割を見るためのローカル導線マップ。
+          </p>
+        </div>
+
+        <div className={`risk-panel ${hasSecurityWarnings ? 'danger' : 'safe'}`}>
+          <span>{hasSecurityWarnings ? '注意' : '安全寄り'}</span>
+          <strong>{hasSecurityWarnings ? 'NG入力の可能性あり' : '抽象入力チェック OK'}</strong>
+        </div>
+      </header>
+
+      <section className="security-strip">
+        <div>
+          <strong>入力ルール</strong>
+          <span>実パス・実ファイル名・端末名・URL・顧客名・個人名は入力しない。</span>
+        </div>
+        <button onClick={() => setNoticeOpen(true)}>注意を再表示</button>
+      </section>
+
+      {hasSecurityWarnings && (
+        <section className="warning-box">
+          <strong>機密情報に近い文字が含まれている可能性があります。</strong>
+          <ul>
+            {securityWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="task-board">
+        <div className="tabs-row">
+          <div className="tabs-scroll">
+            {tasks.map((task) => (
+              <button
+                key={task.id}
+                className={`tab-button ${task.id === activeTaskId ? 'is-active' : ''}`}
+                onClick={() => switchTask(task.id)}
+              >
+                {task.title}
+              </button>
+            ))}
+          </div>
+
+          <button className="add-tab-button" onClick={addTask}>
+            ＋タスク
+          </button>
+        </div>
+
+        <div className="task-meta">
+          <label>
+            タスク名
+            <input
+              value={activeTask.title}
+              onChange={(event) => updateActiveTask({ title: event.target.value })}
+              placeholder="例：日次処理"
+            />
+          </label>
+
+          <label>
+            タスクメモ
+            <input
+              value={activeTask.summary}
+              onChange={(event) => updateActiveTask({ summary: event.target.value })}
+              placeholder="このタスクで整理するファイルの流れ"
+            />
+          </label>
+
+          <button className="danger-outline-button" onClick={removeActiveTask}>
+            タスク削除
+          </button>
+        </div>
+      </section>
+
+      <section className="file-board">
+        <div className="file-tabs">
+          <div className="tabs-scroll">
+            {activeTask.files.map((file) => (
+              <button
+                key={file.id}
+                className={`file-tab ${file.id === activeFile.id ? 'is-active' : ''}`}
+                onClick={() => switchFile(file.id)}
+              >
+                {file.label}
+              </button>
+            ))}
+          </div>
+
+          <button className="add-tab-button" onClick={addFile}>
+            ＋ファイル
+          </button>
+        </div>
+
+        <div className="file-meta">
+          <label>
+            ファイル導線名
+            <input
+              value={activeFile.label}
+              onChange={(event) => renameActiveFile(event.target.value)}
+              placeholder="例：ファイル種別A"
+            />
+          </label>
+
+          <button className="danger-outline-button" onClick={removeActiveFile}>
+            ファイル導線削除
+          </button>
+        </div>
+      </section>
+
+      <section className="route-summary-card">
+        <div className="route-summary-heading">
+          <div>
+            <p>Route Summary</p>
+            <h2>このファイルのルート一覧</h2>
+          </div>
+          <span>{activeFile.label}</span>
+        </div>
+
+        <ol>
+          {routeSummaries.map((summary, index) => (
+            <li key={`${summary}-${index}`}>{summary}</li>
+          ))}
+        </ol>
+      </section>
+
+      {connectMode && (
+        <section className="connect-hint">
+          <strong>接続モード中</strong>
+          <span>
+            接続先のパーツをタップすると「{connectMode.label}」で矢印を作ります。
+          </span>
+          <button onClick={() => setConnectMode(null)}>キャンセル</button>
+        </section>
+      )}
+
+      <section className="workspace">
+        <aside className="parts-panel">
+          <div className="panel-heading">
+            <p>Parts</p>
+            <h2>パーツ追加</h2>
+          </div>
+
+          <div className="parts-list">
+            {NODE_TEMPLATES.map((template) => (
+              <button
+                className="part-button"
+                key={template.kind}
+                onClick={() => addNode(template)}
+              >
+                <span>{template.icon}</span>
+                <div>
+                  <strong>{template.title}</strong>
+                  <small>{template.description}</small>
+                </div>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <section className="flow-card">
+          <div className="flow-toolbar">
+            <div>
+              <strong>Route Canvas</strong>
+              <span>
+                通常パーツは導線1本。複数ルートは「分岐」パーツから作成。
+              </span>
+            </div>
+
+            <div className="flow-toolbar-actions">
+              <button
+                className="danger-ghost-button"
+                onClick={removeSelected}
+                disabled={!selectedNodeId && !selectedEdgeId}
+              >
+                選択中を削除
+              </button>
+            </div>
+          </div>
+
+          <div className="flow-area">
+            <ReactFlow<FlowNode, FlowEdge>
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={(_, node) => {
+                if (connectMode) {
+                  connectNodes(connectMode.sourceId, node.id, connectMode.label);
+                  return;
+                }
+
+                setSelectedNodeId(node.id);
+                setSelectedEdgeId(null);
+              }}
+              onEdgeClick={(_, edge) => {
+                setSelectedEdgeId(edge.id);
+                setSelectedNodeId(null);
+                setConnectMode(null);
+              }}
+              onPaneClick={() => {
+                setSelectedNodeId(null);
+                setSelectedEdgeId(null);
+                setConnectMode(null);
+              }}
+              fitView
+            >
+              <Background color="#bfd5cf" gap={24} />
+              <Controls position="bottom-left" />
+              <MiniMap pannable zoomable nodeStrokeWidth={3} position="bottom-right" />
+            </ReactFlow>
+          </div>
+        </section>
+
+        <aside className="edit-panel">
+          <div className="panel-heading">
+            <p>Edit</p>
+            <h2>詳細編集</h2>
+          </div>
+
+          {!selectedNode && !selectedEdge && (
+            <div className="empty-edit">
+              パーツまたは矢印をタップすると、ここで内容を編集できます。
+            </div>
+          )}
+
+          {selectedNode && (
+            <div className="edit-form">
+              <div className="selected-card">
+                <span>{NODE_KIND_LABELS[selectedNode.data.kind]}</span>
+                <strong>{selectedNode.data.label}</strong>
+              </div>
+
+              <label>
+                抽象名
+                <input
+                  value={selectedNode.data.label}
+                  onChange={(event) =>
+                    updateNodeData(selectedNode.id, {
+                      label: event.target.value,
+                    })
+                  }
+                  placeholder="例：端末A / 一般サービスA / 格納先Y"
+                />
+              </label>
+
+              <label>
+                種別
+                <select
+                  value={selectedNode.data.kind}
+                  onChange={(event) => {
+                    const nextKind = event.target.value as NodeKind;
+                    const template = NODE_TEMPLATES.find((item) => item.kind === nextKind);
+
+                    updateNodeData(selectedNode.id, {
+                      kind: nextKind,
+                      action: template?.action ?? selectedNode.data.action,
+                    });
+                  }}
+                >
+                  {NODE_TEMPLATES.map((template) => (
+                    <option key={template.kind} value={template.kind}>
+                      {template.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                工程
+                <select
+                  value={selectedNode.data.action}
+                  onChange={(event) =>
+                    updateNodeData(selectedNode.id, {
+                      action: event.target.value as ActionKind,
+                    })
+                  }
+                >
+                  {ACTIONS.map((action) => (
+                    <option key={action} value={action}>
+                      {action}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                メモ
+                <textarea
+                  value={selectedNode.data.memo}
+                  onChange={(event) =>
+                    updateNodeData(selectedNode.id, {
+                      memo: event.target.value,
+                    })
+                  }
+                  rows={5}
+                  placeholder="実名ではなく、抽象化して記録"
+                />
+              </label>
+
+              <div className="node-actions">
+                <button
+                  disabled={!selectedNodeCanStartRoute}
+                  onClick={() =>
+                    setConnectMode({
+                      sourceId: selectedNode.id,
+                      label:
+                        selectedNode.data.kind === 'split'
+                          ? '分岐'
+                          : selectedNode.data.action,
+                    })
+                  }
+                >
+                  次につなぐ
+                </button>
+
+                {!selectedNodeCanStartRoute && (
+                  <p className="route-rule-message">
+                    このパーツはすでに次の導線があります。複数ルートにしたい場合は「分岐」パーツを使ってください。
+                  </p>
+                )}
+              </div>
+
+              {selectedNode.data.kind === 'split' && (
+                <div className="split-actions">
+                  <p>分岐ルートを追加</p>
+                  {SPLIT_ROUTE_LABELS.map((label) => (
+                    <button key={label} onClick={() => addSplitRoute(label)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedEdge && (
+            <div className="edit-form">
+              <div className="selected-card">
+                <span>導線</span>
+                <strong>{String(selectedEdge.label ?? '工程')}</strong>
+              </div>
+
+              <label>
+                導線ラベル
+                <select
+                  value={selectedEdge.data?.action ?? '移動'}
+                  onChange={(event) =>
+                    updateEdgeData(selectedEdge.id, {
+                      action: event.target.value,
+                    })
+                  }
+                >
+                  {ROUTE_LABELS.map((action) => (
+                    <option key={action} value={action}>
+                      {action}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                補足メモ
+                <textarea
+                  value={selectedEdge.data?.memo ?? ''}
+                  onChange={(event) =>
+                    updateEdgeData(selectedEdge.id, {
+                      memo: event.target.value,
+                    })
+                  }
+                  rows={5}
+                  placeholder="例：経由する / 戻す / 別ルートへ"
+                />
+              </label>
+
+              <div className="insert-box">
+                <p>この導線の間にパーツを挿入</p>
+                <label>
+                  挿入するパーツ
+                  <select
+                    value={insertKind}
+                    onChange={(event) => setInsertKind(event.target.value as NodeKind)}
+                  >
+                    {NODE_TEMPLATES.filter((template) => template.kind !== 'source').map(
+                      (template) => (
+                        <option key={template.kind} value={template.kind}>
+                          {template.title}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+                <button onClick={insertNodeOnSelectedEdge}>
+                  導線の間に挿入
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="storage-box">
+            <label>
+              保存モード
+              <select
+                value={saveMode}
+                onChange={(event) => {
+                  const nextMode = event.target.value as SaveMode;
+                  setSaveMode(nextMode);
+
+                  if (nextMode === 'off') {
+                    setStatusMessage('保存OFF：この画面の内容は自動保存されません。');
+                  }
+
+                  if (nextMode === 'session') {
+                    setStatusMessage(
+                      '一時保存：ブラウザ内に一時保存します。機密は入力しないでください。',
+                    );
+                  }
+
+                  if (nextMode === 'local') {
+                    setStatusMessage(
+                      '端末保存：この端末に残ります。共有端末では使わないでください。',
+                    );
+                  }
+                }}
+              >
+                <option value="off">保存OFF</option>
+                <option value="session">一時保存</option>
+                <option value="local">端末保存</option>
+              </select>
+            </label>
+
+            <div className="storage-actions">
+              <button onClick={saveDraft}>保存</button>
+              <button onClick={loadDraft}>読込</button>
+              <button className="danger-button" onClick={resetMap}>
+                全削除
+              </button>
+            </div>
+
+            <p>{statusMessage}</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+  );
+}
+
+export default App;
