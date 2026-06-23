@@ -14,7 +14,7 @@
   border: 1px solid rgba(72, 108, 101, 0.18);
   border-radius: 28px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(242, 251, 248, 0.72)),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(242, 251, 248, 0.74)),
     repeating-linear-gradient(
       90deg,
       rgba(85, 128, 119, 0.05) 0,
@@ -45,12 +45,12 @@
 .hero h1 {
   margin: 0;
   color: #203a37;
-  font-size: clamp(1.65rem, 5vw, 3.2rem);
+  font-size: clamp(1.7rem, 5vw, 3.35rem);
   line-height: 1.05;
 }
 
 .hero p {
-  max-width: 760px;
+  max-width: 800px;
   margin: 12px 0 0;
   color: #526966;
   line-height: 1.8;
@@ -123,7 +123,7 @@
 .primary-button,
 .add-tab-button,
 .node-actions button,
-.decision-actions button {
+.split-actions button {
   border: 0;
   border-radius: 999px;
   padding: 10px 14px;
@@ -316,7 +316,7 @@
 
 .part-button {
   display: grid;
-  grid-template-columns: 38px 1fr;
+  grid-template-columns: 42px 1fr;
   gap: 10px;
   align-items: center;
   width: 100%;
@@ -340,13 +340,15 @@
 
 .part-button span {
   display: grid;
-  width: 38px;
+  width: 42px;
   height: 38px;
   place-items: center;
   border-radius: 14px;
   background: #dff3ee;
   color: #2c625a;
-  font-weight: 900;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.03em;
 }
 
 .part-button strong,
@@ -391,7 +393,7 @@
 .flow-area {
   height: 620px;
   background:
-    linear-gradient(rgba(242, 250, 247, 0.78), rgba(242, 250, 247, 0.78)),
+    linear-gradient(rgba(242, 250, 247, 0.72), rgba(242, 250, 247, 0.72)),
     repeating-linear-gradient(
       90deg,
       rgba(72, 108, 101, 0.07) 0,
@@ -408,7 +410,7 @@
     );
 }
 
-.flow-node {
+.route-node {
   position: relative;
   width: 190px;
   min-height: 112px;
@@ -419,42 +421,46 @@
   box-shadow: 0 14px 34px rgba(51, 78, 72, 0.11);
 }
 
-.flow-node.is-selected {
+.route-node.is-selected {
   box-shadow:
     0 0 0 4px rgba(47, 113, 102, 0.18),
     0 14px 34px rgba(51, 78, 72, 0.14);
 }
 
-.flow-node--source {
+.route-node--source {
   background: linear-gradient(135deg, #d9f4ee, #f3fff8);
 }
 
-.flow-node--workspace {
+.route-node--device {
   background: linear-gradient(135deg, #e2f0ff, #f5fbff);
 }
 
-.flow-node--process {
+.route-node--service {
+  background: linear-gradient(135deg, #e9f7ff, #f7fdff);
+}
+
+.route-node--operation {
   background: linear-gradient(135deg, #fff2cf, #fffaf0);
 }
 
-.flow-node--check {
-  background: linear-gradient(135deg, #e7f6dc, #fbfff7);
+.route-node--tool {
+  background: linear-gradient(135deg, #e8ecff, #fbfcff);
 }
 
-.flow-node--decision {
+.route-node--split {
   background: linear-gradient(135deg, #ede7ff, #fbf8ff);
   border-style: dashed;
 }
 
-.flow-node--storage {
+.route-node--storage {
   background: linear-gradient(135deg, #dff4ff, #f7fdff);
 }
 
-.flow-node--note {
+.route-node--memo {
   background: linear-gradient(135deg, #ffe8dc, #fff8f4);
 }
 
-.flow-node__top {
+.route-node__top {
   display: flex;
   justify-content: space-between;
   gap: 8px;
@@ -462,17 +468,17 @@
   margin-bottom: 10px;
 }
 
-.flow-node__top span,
-.flow-node__top em {
+.route-node__top span,
+.route-node__top em {
   font-size: 0.72rem;
   font-weight: 900;
 }
 
-.flow-node__top span {
+.route-node__top span {
   color: #4e716c;
 }
 
-.flow-node__top em {
+.route-node__top em {
   padding: 4px 8px;
   border-radius: 999px;
   color: #2d5b54;
@@ -480,14 +486,14 @@
   font-style: normal;
 }
 
-.flow-node strong {
+.route-node strong {
   display: block;
   color: #203a37;
   font-size: 1rem;
   line-height: 1.35;
 }
 
-.flow-node p {
+.route-node p {
   display: -webkit-box;
   margin: 8px 0 0;
   overflow: hidden;
@@ -498,14 +504,14 @@
   -webkit-line-clamp: 3;
 }
 
-.decision-preview {
+.split-preview {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
   margin-top: 9px;
 }
 
-.decision-preview span {
+.split-preview span {
   padding: 4px 7px;
   border-radius: 999px;
   color: #4b3e65;
@@ -514,7 +520,7 @@
   font-weight: 900;
 }
 
-.flow-handle {
+.route-handle {
   width: 12px;
   height: 12px;
   border: 2px solid #ffffff;
@@ -526,22 +532,58 @@
   background: transparent;
 }
 
-.react-flow__edge-path {
-  stroke: #3d7168;
-}
-
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke: #243f3b;
+.route-edge-path {
+  fill: none;
+  stroke: #2f7166;
   stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 10 12;
+  animation: route-flow 1.1s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(47, 113, 102, 0.18));
 }
 
-.react-flow__edge-textbg {
-  fill: rgba(247, 255, 252, 0.96);
+.route-edge-path.is-selected {
+  stroke: #174d44;
+  stroke-width: 4;
 }
 
-.react-flow__edge-text {
-  fill: #26423e;
-  font-weight: 850;
+.route-particle {
+  fill: #35d487;
+  opacity: 0.95;
+  filter:
+    drop-shadow(0 0 4px rgba(53, 212, 135, 0.8))
+    drop-shadow(0 0 10px rgba(53, 212, 135, 0.35));
+}
+
+.route-particle--soft {
+  fill: #6ee7ad;
+  opacity: 0.72;
+}
+
+.route-edge-label {
+  position: absolute;
+  z-index: 5;
+  padding: 5px 9px;
+  border: 1px solid rgba(47, 113, 102, 0.18);
+  border-radius: 999px;
+  color: #26423e;
+  background: rgba(247, 255, 252, 0.96);
+  box-shadow: 0 8px 18px rgba(48, 78, 73, 0.1);
+  font-size: 0.72rem;
+  font-weight: 900;
+  pointer-events: all;
+  white-space: nowrap;
+}
+
+@keyframes route-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -44;
+  }
 }
 
 .empty-edit {
@@ -622,9 +664,9 @@
   background: #2f7166;
 }
 
-.decision-actions {
+.split-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   padding: 12px;
   border: 1px dashed rgba(92, 73, 122, 0.24);
@@ -632,7 +674,7 @@
   background: rgba(248, 244, 255, 0.8);
 }
 
-.decision-actions p {
+.split-actions p {
   grid-column: 1 / -1;
   margin: 0;
   color: #5a4b72;
@@ -640,7 +682,7 @@
   font-weight: 900;
 }
 
-.decision-actions button {
+.split-actions button {
   padding: 10px 8px;
   color: #4a3d61;
   background: #ffffff;
@@ -837,7 +879,7 @@
     border-radius: 24px;
   }
 
-  .decision-actions {
+  .split-actions {
     grid-template-columns: 1fr;
   }
 

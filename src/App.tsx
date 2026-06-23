@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Background,
   Controls,
+  EdgeLabelRenderer,
   Handle,
   MarkerType,
   MiniMap,
@@ -10,24 +11,29 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
+  getSmoothStepPath,
   type Connection,
   type Edge,
   type EdgeChange,
+  type EdgeProps,
+  type EdgeTypes,
   type Node,
   type NodeChange,
   type NodeProps,
+  type NodeTypes,
   type OnConnect,
 } from '@xyflow/react';
 import './App.css';
 
 type NodeKind =
   | 'source'
-  | 'workspace'
-  | 'process'
-  | 'check'
-  | 'decision'
+  | 'device'
+  | 'service'
+  | 'operation'
+  | 'tool'
+  | 'split'
   | 'storage'
-  | 'note';
+  | 'memo';
 
 type ActionKind =
   | '取得'
@@ -36,11 +42,11 @@ type ActionKind =
   | '解凍'
   | '加工'
   | 'リネーム'
-  | '確認'
-  | '判定'
+  | 'ツール使用'
+  | '分岐'
   | '格納'
-  | '保留'
   | '戻し'
+  | '保留'
   | '完了';
 
 type SaveMode = 'off' | 'session' | 'local';
@@ -59,7 +65,7 @@ type FlowEdgeData = {
   memo: string;
 };
 
-type FlowNode = Node<FlowNodeData, 'flowCard'>;
+type FlowNode = Node<FlowNodeData, 'routeCard'>;
 type FlowEdge = Edge<FlowEdgeData>;
 
 type NodeTemplate = {
@@ -90,8 +96,8 @@ type ConnectMode = {
   label: string;
 };
 
-const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v2';
-const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v2';
+const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v3';
+const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v3';
 
 const ACTIONS: ActionKind[] = [
   '取得',
@@ -100,38 +106,40 @@ const ACTIONS: ActionKind[] = [
   '解凍',
   '加工',
   'リネーム',
-  '確認',
-  '判定',
+  'ツール使用',
+  '分岐',
   '格納',
-  '保留',
   '戻し',
+  '保留',
   '完了',
 ];
 
-const EDGE_LABELS = [
+const ROUTE_LABELS = [
   '取得',
   '移動',
   '圧縮',
   '解凍',
   '加工',
   'リネーム',
-  '確認',
-  'OK',
-  'NG',
-  '保留',
+  'ツール使用',
+  '分岐',
+  'ルートA',
+  'ルートB',
   '戻し',
+  '保留',
   '格納',
   '完了',
 ];
 
 const NODE_KIND_LABELS: Record<NodeKind, string> = {
   source: '取得元',
-  workspace: '作業場所',
-  process: '処理',
-  check: '確認',
-  decision: '判定',
+  device: '端末・場所',
+  service: '一般サービス',
+  operation: '工程',
+  tool: 'ツール',
+  split: '分岐',
   storage: '格納先',
-  note: 'メモ',
+  memo: 'メモ',
 };
 
 const NODE_TEMPLATES: NodeTemplate[] = [
@@ -139,35 +147,42 @@ const NODE_TEMPLATES: NodeTemplate[] = [
     kind: 'source',
     title: '取得元',
     action: '取得',
-    description: 'ファイルが来る場所',
-    icon: '↓',
+    description: 'ファイルが来る起点',
+    icon: 'IN',
   },
   {
-    kind: 'workspace',
-    title: '作業場所',
+    kind: 'device',
+    title: '端末・場所',
     action: '移動',
     description: '端末A・作業場所Xなど',
-    icon: '□',
+    icon: 'PC',
   },
   {
-    kind: 'process',
-    title: '処理',
+    kind: 'service',
+    title: '一般サービス',
+    action: '移動',
+    description: 'Slack / SharePoint など',
+    icon: 'SV',
+  },
+  {
+    kind: 'operation',
+    title: '工程',
     action: '加工',
-    description: '解凍・加工・リネームなど',
-    icon: '◇',
+    description: '圧縮・解凍・加工など',
+    icon: 'OP',
   },
   {
-    kind: 'check',
-    title: '確認',
-    action: '確認',
-    description: '確認・照合・見直し',
-    icon: '✓',
+    kind: 'tool',
+    title: 'ツール使用',
+    action: 'ツール使用',
+    description: 'ツールAで処理する',
+    icon: 'TL',
   },
   {
-    kind: 'decision',
-    title: '判定',
-    action: '判定',
-    description: 'OK / NG / 保留に分ける',
+    kind: 'split',
+    title: '分岐',
+    action: '分岐',
+    description: 'ルートが分かれる地点',
     icon: 'Y',
   },
   {
@@ -175,13 +190,13 @@ const NODE_TEMPLATES: NodeTemplate[] = [
     title: '格納先',
     action: '格納',
     description: '最終格納・一時保管',
-    icon: '■',
+    icon: 'OUT',
   },
   {
-    kind: 'note',
+    kind: 'memo',
     title: 'メモ',
     action: '保留',
-    description: '覚えにくい点・例外',
+    description: '補足・注意・例外',
     icon: '!',
   },
 ];
@@ -195,7 +210,7 @@ function createEdge(source: string, target: string, label: string, memo = ''): F
     id: createId('edge'),
     source,
     target,
-    type: 'smoothstep',
+    type: 'route',
     label: memo ? `${label} / ${memo}` : label,
     data: {
       action: label,
@@ -204,9 +219,6 @@ function createEdge(source: string, target: string, label: string, memo = ''): F
     markerEnd: {
       type: MarkerType.ArrowClosed,
     },
-    style: {
-      strokeWidth: 2.4,
-    },
   };
 }
 
@@ -214,8 +226,9 @@ function createStarterFile(label: string): FileRoute {
   const prefix = createId('flow');
 
   const sourceId = `${prefix}-source`;
-  const workspaceId = `${prefix}-workspace`;
-  const decisionId = `${prefix}-decision`;
+  const serviceId = `${prefix}-service`;
+  const operationId = `${prefix}-operation`;
+  const splitId = `${prefix}-split`;
   const storageId = `${prefix}-storage`;
 
   return {
@@ -224,53 +237,65 @@ function createStarterFile(label: string): FileRoute {
     nodes: [
       {
         id: sourceId,
-        type: 'flowCard',
-        position: { x: 20, y: 90 },
+        type: 'routeCard',
+        position: { x: 20, y: 100 },
         data: {
           label: '取得元A',
           kind: 'source',
           action: '取得',
-          memo: '例：共有クラウド、チャット、作業場所など。実名は入れない。',
+          memo: 'どこからファイルを取得するか。実名は入れない。',
         },
       },
       {
-        id: workspaceId,
-        type: 'flowCard',
-        position: { x: 280, y: 90 },
+        id: serviceId,
+        type: 'routeCard',
+        position: { x: 270, y: 100 },
         data: {
-          label: '作業場所X',
-          kind: 'workspace',
+          label: '一般サービスA',
+          kind: 'service',
           action: '移動',
-          memo: '例：端末A、作業場所X。実端末名や実パスは入れない。',
+          memo: 'Slack / SharePoint など。実チャンネル名や実URLは入れない。',
         },
       },
       {
-        id: decisionId,
-        type: 'flowCard',
-        position: { x: 540, y: 90 },
+        id: operationId,
+        type: 'routeCard',
+        position: { x: 520, y: 100 },
         data: {
-          label: '加工結果の判定',
-          kind: 'decision',
-          action: '判定',
-          memo: 'OKなら格納、NGなら確認へ戻す、保留ならメモへ。',
+          label: '工程A',
+          kind: 'operation',
+          action: '加工',
+          memo: '圧縮・解凍・加工・リネームなど。',
+        },
+      },
+      {
+        id: splitId,
+        type: 'routeCard',
+        position: { x: 770, y: 100 },
+        data: {
+          label: '分岐地点',
+          kind: 'split',
+          action: '分岐',
+          memo: 'ファイルの行き先が分かれる地点。',
         },
       },
       {
         id: storageId,
-        type: 'flowCard',
-        position: { x: 820, y: 90 },
+        type: 'routeCard',
+        position: { x: 1020, y: 100 },
         data: {
           label: '格納先Y',
           kind: 'storage',
           action: '格納',
-          memo: '例：最終格納先、一時保管先。実フォルダ名は入れない。',
+          memo: 'どこへ格納するか。実パスは入れない。',
         },
       },
     ],
     edges: [
-      createEdge(sourceId, workspaceId, '取得'),
-      createEdge(workspaceId, decisionId, '加工'),
-      createEdge(decisionId, storageId, 'OK', '格納'),
+      createEdge(sourceId, serviceId, '取得'),
+      createEdge(serviceId, operationId, '移動'),
+      createEdge(operationId, splitId, '加工'),
+      createEdge(splitId, storageId, '格納'),
     ],
   };
 }
@@ -287,32 +312,105 @@ function createTask(title: string): TaskMap {
   };
 }
 
-const INITIAL_TASKS: TaskMap[] = [createTask('タスクA')];
+function RouteNode(props: NodeProps) {
+  const data = props.data as FlowNodeData;
+  const selected = props.selected;
 
-function FlowCardNode({ data, selected }: NodeProps<FlowNode>) {
   return (
-    <div className={`flow-node flow-node--${data.kind} ${selected ? 'is-selected' : ''}`}>
-      <Handle type="target" position={Position.Left} className="flow-handle" />
+    <div className={`route-node route-node--${data.kind} ${selected ? 'is-selected' : ''}`}>
+      <Handle type="target" position={Position.Left} className="route-handle" />
 
-      <div className="flow-node__top">
+      <div className="route-node__top">
         <span>{NODE_KIND_LABELS[data.kind]}</span>
         <em>{data.action}</em>
       </div>
 
       <strong>{data.label}</strong>
 
-      {data.kind === 'decision' && (
-        <div className="decision-preview" aria-label="判定ルート">
-          <span>OK</span>
-          <span>NG</span>
-          <span>保留</span>
+      {data.kind === 'split' && (
+        <div className="split-preview" aria-label="分岐ルート">
+          <span>ルートA</span>
+          <span>ルートB</span>
+          <span>戻し</span>
         </div>
       )}
 
       {data.memo && <p>{data.memo}</p>}
 
-      <Handle type="source" position={Position.Right} className="flow-handle" />
+      <Handle type="source" position={Position.Right} className="route-handle" />
     </div>
+  );
+}
+
+function RouteEdge(props: EdgeProps) {
+  const {
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    markerEnd,
+    data,
+    label,
+    selected,
+  } = props;
+
+  const edgeData = data as FlowEdgeData | undefined;
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 18,
+  });
+
+  const pathId = `route-path-${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const edgeLabel = edgeData?.memo
+    ? `${edgeData.action} / ${edgeData.memo}`
+    : edgeData?.action ?? String(label ?? '');
+
+  return (
+    <>
+      <path
+        id={pathId}
+        d={edgePath}
+        className={`route-edge-path ${selected ? 'is-selected' : ''}`}
+        markerEnd={markerEnd}
+      />
+
+      <circle r="4" className="route-particle">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0s">
+          <mpath href={`#${pathId}`} />
+        </animateMotion>
+      </circle>
+
+      <circle r="3" className="route-particle route-particle--soft">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s">
+          <mpath href={`#${pathId}`} />
+        </animateMotion>
+      </circle>
+
+      <circle r="3" className="route-particle route-particle--soft">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s">
+          <mpath href={`#${pathId}`} />
+        </animateMotion>
+      </circle>
+
+      <EdgeLabelRenderer>
+        <div
+          className="route-edge-label"
+          style={{
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+          }}
+        >
+          {edgeLabel}
+        </div>
+      </EdgeLabelRenderer>
+    </>
   );
 }
 
@@ -376,6 +474,8 @@ function scanSensitiveText(values: string[]): string[] {
   return Array.from(new Set(warnings));
 }
 
+const INITIAL_TASKS: TaskMap[] = [createTask('タスクA')];
+
 function App() {
   const [tasks, setTasks] = useState<TaskMap[]>(INITIAL_TASKS);
   const [activeTaskId, setActiveTaskId] = useState(INITIAL_TASKS[0].id);
@@ -390,9 +490,16 @@ function App() {
     '保存OFF：この画面の内容は自動保存されません。',
   );
 
-  const nodeTypes = useMemo(
+  const nodeTypes = useMemo<NodeTypes>(
     () => ({
-      flowCard: FlowCardNode,
+      routeCard: RouteNode,
+    }),
+    [],
+  );
+
+  const edgeTypes = useMemo<EdgeTypes>(
+    () => ({
+      route: RouteEdge,
     }),
     [],
   );
@@ -646,11 +753,13 @@ function App() {
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
-      const action = '移動';
+      if (!connection.source || !connection.target) {
+        return;
+      }
 
       updateActiveFile((file) => ({
         ...file,
-        edges: addEdge(createEdge(connection.source ?? '', connection.target ?? '', action), file.edges),
+        edges: addEdge(createEdge(connection.source!, connection.target!, '移動'), file.edges),
       }));
     },
     [activeTaskId],
@@ -659,10 +768,10 @@ function App() {
   const addNode = (template: NodeTemplate) => {
     const newNode: FlowNode = {
       id: createId(`node-${template.kind}`),
-      type: 'flowCard',
+      type: 'routeCard',
       position: {
         x: 90 + nodes.length * 34,
-        y: 160 + nodes.length * 28,
+        y: 170 + nodes.length * 28,
       },
       data: {
         label: template.title,
@@ -739,7 +848,7 @@ function App() {
     setStatusMessage(`「${label}」で接続しました。`);
   };
 
-  const addDecisionRoute = (routeLabel: 'OK' | 'NG' | '保留') => {
+  const addSplitRoute = (routeLabel: 'ルートA' | 'ルートB' | '戻し' | '保留') => {
     if (!selectedNode) {
       return;
     }
@@ -747,7 +856,7 @@ function App() {
     const routeIndex = edges.filter((edge) => edge.source === selectedNode.id).length;
 
     const routeSettings: Record<
-      'OK' | 'NG' | '保留',
+      'ルートA' | 'ルートB' | '戻し' | '保留',
       {
         kind: NodeKind;
         action: ActionKind;
@@ -755,23 +864,29 @@ function App() {
         memo: string;
       }
     > = {
-      OK: {
+      ルートA: {
+        kind: 'operation',
+        action: '加工',
+        label: '別工程A',
+        memo: '分岐後に進む別ルート。',
+      },
+      ルートB: {
         kind: 'storage',
         action: '格納',
-        label: 'OK先',
-        memo: '問題なければ次へ進む。',
+        label: '別格納先B',
+        memo: '分岐後の別格納先。',
       },
-      NG: {
-        kind: 'check',
+      戻し: {
+        kind: 'operation',
         action: '戻し',
-        label: 'NG時の確認',
-        memo: '不備があれば確認・戻しを行う。',
+        label: '戻し先',
+        memo: '前工程へ戻す、または再処理する。',
       },
       保留: {
-        kind: 'note',
+        kind: 'memo',
         action: '保留',
         label: '保留メモ',
-        memo: '判断を止める理由や確認待ちを残す。',
+        memo: '一時停止・確認待ち・例外など。',
       },
     };
 
@@ -779,7 +894,7 @@ function App() {
 
     const newNode: FlowNode = {
       id: createId(`node-${setting.kind}`),
-      type: 'flowCard',
+      type: 'routeCard',
       position: {
         x: selectedNode.position.x + 300,
         y: selectedNode.position.y + routeIndex * 150,
@@ -801,7 +916,7 @@ function App() {
     setSelectedNodeId(newNode.id);
     setSelectedEdgeId(null);
     setConnectMode(null);
-    setStatusMessage(`判定から「${routeLabel}」ルートを追加しました。`);
+    setStatusMessage(`分岐から「${routeLabel}」を追加しました。`);
   };
 
   const removeSelected = () => {
@@ -958,7 +1073,7 @@ function App() {
               NG：実パス / 実ファイル名 / 実端末名 / 実チャンネル名 / URL / 顧客名
             </div>
             <div className="notice-ok">
-              OK：端末A / 作業場所X / ファイル種別A / 共有クラウド / 確認ポイント
+              OK：取得元A / 端末A / 一般サービスA / 工程A / ツールA / 格納先Y
             </div>
             <button className="primary-button" onClick={() => setNoticeOpen(false)}>
               理解しました。抽象名のみで作成する
@@ -970,10 +1085,10 @@ function App() {
       <header className="hero">
         <div>
           <p className="eyebrow">Pathless Map</p>
-          <h1>機密を入れないファイル導線整理ツール</h1>
+          <h1>ファイルの通り道を見る地図</h1>
           <p>
-            タスクを分ける。ファイルごとに導線を見る。
-            判定で分けて、矢印でつなぐ、目にやさしい回路図デモ。
+            どこから来て、どの端末・サービス・工程を通り、どこへ格納されるか。
+            緑の粒子でファイルの進行方向を見せる、機密を入れない導線マップ。
           </p>
         </div>
 
@@ -1036,7 +1151,7 @@ function App() {
             <input
               value={activeTask.summary}
               onChange={(event) => updateActiveTask({ summary: event.target.value })}
-              placeholder="このタスクで整理する流れ"
+              placeholder="このタスクで整理するファイルの流れ"
             />
           </label>
 
@@ -1118,9 +1233,9 @@ function App() {
         <section className="flow-card">
           <div className="flow-toolbar">
             <div>
-              <strong>Flow Canvas</strong>
+              <strong>Route Canvas</strong>
               <span>
-                PCは接続点ドラッグ。スマホはパーツ選択後「次につなぐ」。
+                ファイルが流れる経路を作る。PCは接続点ドラッグ、スマホは「次につなぐ」。
               </span>
             </div>
 
@@ -1134,10 +1249,11 @@ function App() {
           </div>
 
           <div className="flow-area">
-            <ReactFlow
+            <ReactFlow<FlowNode, FlowEdge>
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
@@ -1162,7 +1278,7 @@ function App() {
               }}
               fitView
             >
-              <Background color="#bed2cd" gap={22} />
+              <Background color="#bfd5cf" gap={24} />
               <Controls position="bottom-left" />
               <MiniMap pannable zoomable nodeStrokeWidth={3} position="bottom-right" />
             </ReactFlow>
@@ -1197,7 +1313,7 @@ function App() {
                       label: event.target.value,
                     })
                   }
-                  placeholder="例：作業場所X"
+                  placeholder="例：端末A / 一般サービスA / 格納先Y"
                 />
               </label>
 
@@ -1205,15 +1321,15 @@ function App() {
                 種別
                 <select
                   value={selectedNode.data.kind}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const nextKind = event.target.value as NodeKind;
+                    const template = NODE_TEMPLATES.find((item) => item.kind === nextKind);
+
                     updateNodeData(selectedNode.id, {
-                      kind: event.target.value as NodeKind,
-                      action:
-                        event.target.value === 'decision'
-                          ? '判定'
-                          : selectedNode.data.action,
-                    })
-                  }
+                      kind: nextKind,
+                      action: template?.action ?? selectedNode.data.action,
+                    });
+                  }}
                 >
                   {NODE_TEMPLATES.map((template) => (
                     <option key={template.kind} value={template.kind}>
@@ -1224,7 +1340,7 @@ function App() {
               </label>
 
               <label>
-                主な工程
+                工程
                 <select
                   value={selectedNode.data.action}
                   onChange={(event) =>
@@ -1260,7 +1376,10 @@ function App() {
                   onClick={() =>
                     setConnectMode({
                       sourceId: selectedNode.id,
-                      label: selectedNode.data.kind === 'decision' ? 'OK' : selectedNode.data.action,
+                      label:
+                        selectedNode.data.kind === 'split'
+                          ? '分岐'
+                          : selectedNode.data.action,
                     })
                   }
                 >
@@ -1268,12 +1387,13 @@ function App() {
                 </button>
               </div>
 
-              {selectedNode.data.kind === 'decision' && (
-                <div className="decision-actions">
-                  <p>判定ルートを追加</p>
-                  <button onClick={() => addDecisionRoute('OK')}>OKルート</button>
-                  <button onClick={() => addDecisionRoute('NG')}>NGルート</button>
-                  <button onClick={() => addDecisionRoute('保留')}>保留ルート</button>
+              {selectedNode.data.kind === 'split' && (
+                <div className="split-actions">
+                  <p>分岐ルートを追加</p>
+                  <button onClick={() => addSplitRoute('ルートA')}>ルートA</button>
+                  <button onClick={() => addSplitRoute('ルートB')}>ルートB</button>
+                  <button onClick={() => addSplitRoute('戻し')}>戻し</button>
+                  <button onClick={() => addSplitRoute('保留')}>保留</button>
                 </div>
               )}
             </div>
@@ -1282,12 +1402,12 @@ function App() {
           {selectedEdge && (
             <div className="edit-form">
               <div className="selected-card">
-                <span>矢印</span>
+                <span>導線</span>
                 <strong>{String(selectedEdge.label ?? '工程')}</strong>
               </div>
 
               <label>
-                矢印の工程・ルート
+                導線ラベル
                 <select
                   value={selectedEdge.data?.action ?? '移動'}
                   onChange={(event) =>
@@ -1296,7 +1416,7 @@ function App() {
                     })
                   }
                 >
-                  {EDGE_LABELS.map((action) => (
+                  {ROUTE_LABELS.map((action) => (
                     <option key={action} value={action}>
                       {action}
                     </option>
@@ -1305,7 +1425,7 @@ function App() {
               </label>
 
               <label>
-                分岐・補足メモ
+                補足メモ
                 <textarea
                   value={selectedEdge.data?.memo ?? ''}
                   onChange={(event) =>
@@ -1314,7 +1434,7 @@ function App() {
                     })
                   }
                   rows={5}
-                  placeholder="例：OKの場合 / NGなら確認へ戻す"
+                  placeholder="例：経由する / 戻す / 別ルートへ"
                 />
               </label>
             </div>
