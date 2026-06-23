@@ -30,6 +30,7 @@ type NodeKind =
   | 'device'
   | 'operation'
   | 'tool'
+  | 'folder'
   | 'split'
   | 'service'
   | 'storage'
@@ -43,6 +44,7 @@ type ActionKind =
   | '加工'
   | 'リネーム'
   | 'ツール使用'
+  | 'フォルダ作成'
   | '分岐'
   | '格納'
   | '戻し'
@@ -96,8 +98,8 @@ type ConnectMode = {
   label: string;
 };
 
-const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v7';
-const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v7';
+const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v8';
+const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v8';
 
 const ACTIONS: ActionKind[] = [
   '取得',
@@ -107,6 +109,7 @@ const ACTIONS: ActionKind[] = [
   '加工',
   'リネーム',
   'ツール使用',
+  'フォルダ作成',
   '分岐',
   '格納',
   '戻し',
@@ -122,6 +125,7 @@ const ROUTE_LABELS = [
   '加工',
   'リネーム',
   'ツール使用',
+  'フォルダ作成',
   '分岐',
   'ルートA',
   'ルートB',
@@ -153,6 +157,7 @@ const NODE_KIND_LABELS: Record<NodeKind, string> = {
   device: '端末・場所',
   operation: '工程',
   tool: 'ツール',
+  folder: 'フォルダ作成',
   split: '分岐',
   service: '一般サービス',
   storage: '格納先',
@@ -187,6 +192,13 @@ const NODE_TEMPLATES: NodeTemplate[] = [
     action: 'ツール使用',
     description: 'ツールAで処理する',
     icon: 'TL',
+  },
+  {
+    kind: 'folder',
+    title: 'フォルダ作成',
+    action: 'フォルダ作成',
+    description: '格納前に抽象フォルダを作る',
+    icon: 'FD',
   },
   {
     kind: 'split',
@@ -246,6 +258,7 @@ function createStarterFile(label: string): FileRoute {
   const deviceId = `${prefix}-device`;
   const operationId = `${prefix}-operation`;
   const toolId = `${prefix}-tool`;
+  const folderId = `${prefix}-folder`;
   const serviceId = `${prefix}-service`;
   const storageId = `${prefix}-storage`;
 
@@ -298,9 +311,20 @@ function createStarterFile(label: string): FileRoute {
         },
       },
       {
-        id: serviceId,
+        id: folderId,
         type: 'routeCard',
         position: { x: 1020, y: 100 },
+        data: {
+          label: 'フォルダ作成A',
+          kind: 'folder',
+          action: 'フォルダ作成',
+          memo: '格納前に抽象フォルダを作成する。実フォルダ名や実パスは入れない。',
+        },
+      },
+      {
+        id: serviceId,
+        type: 'routeCard',
+        position: { x: 1270, y: 100 },
         data: {
           label: '一般サービスA',
           kind: 'service',
@@ -311,7 +335,7 @@ function createStarterFile(label: string): FileRoute {
       {
         id: storageId,
         type: 'routeCard',
-        position: { x: 1270, y: 100 },
+        position: { x: 1520, y: 100 },
         data: {
           label: '格納先Y',
           kind: 'storage',
@@ -324,7 +348,8 @@ function createStarterFile(label: string): FileRoute {
       createEdge(sourceId, deviceId, '取得'),
       createEdge(deviceId, operationId, '移動'),
       createEdge(operationId, toolId, '加工'),
-      createEdge(toolId, serviceId, 'ツール使用'),
+      createEdge(toolId, folderId, 'ツール使用'),
+      createEdge(folderId, serviceId, 'フォルダ作成'),
       createEdge(serviceId, storageId, '格納'),
     ],
   };
@@ -1314,7 +1339,7 @@ function App() {
                 label: event.target.value,
               })
             }
-            placeholder="例：端末A / 一般サービスA / 格納先Y"
+            placeholder="例：端末A / フォルダ作成A / 一般サービスA / 格納先Y"
           />
         </label>
 
@@ -1510,7 +1535,7 @@ function App() {
               NG：実パス / 実ファイル名 / 実端末名 / 実チャンネル名 / URL / 顧客名
             </div>
             <div className="notice-ok">
-              OK：取得元A / 端末A / 一般サービスA / 工程A / ツールA / 格納先Y
+              OK：取得元A / 端末A / 工程A / ツールA / フォルダ作成A / 一般サービスA / 格納先Y
             </div>
             <button className="primary-button" onClick={() => setNoticeOpen(false)}>
               理解しました。抽象名のみで作成する

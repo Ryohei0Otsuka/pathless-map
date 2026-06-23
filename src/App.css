@@ -553,6 +553,10 @@ button:disabled {
   background: linear-gradient(135deg, #e8ecff, #fbfcff);
 }
 
+.route-node--folder {
+  background: linear-gradient(135deg, #e7f5dc, #f8fff2);
+}
+
 .route-node--split {
   background: linear-gradient(135deg, #ede7ff, #fbf8ff);
   border-style: dashed;
