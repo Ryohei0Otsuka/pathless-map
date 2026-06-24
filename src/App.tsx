@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -434,27 +434,32 @@ function RouteEdge(props: EdgeProps) {
   const edgeLabel = edgeData?.memo
     ? `${edgeData.action} / ${edgeData.memo}`
     : edgeData?.action ?? String(label ?? '');
+  const isLightweight = edgeData?.lightweight === true;
 
   return (
     <>
       <path
         id={id}
         d={edgePath}
-        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''}`}
+        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''} ${isLightweight ? 'is-lightweight' : ''}`}
         markerEnd={markerEnd}
       />
 
-      <circle r="4" className="route-particle">
-        <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
-      </circle>
+      {!isLightweight && (
+        <>
+          <circle r="4" className="route-particle">
+            <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
+          </circle>
 
-      <circle r="3" className="route-particle route-particle--soft">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
-      </circle>
+          <circle r="3" className="route-particle route-particle--soft">
+            <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
+          </circle>
 
-      <circle r="3" className="route-particle route-particle--soft">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
-      </circle>
+          <circle r="3" className="route-particle route-particle--soft">
+            <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
+          </circle>
+        </>
+      )}
 
       <EdgeLabelRenderer>
         <div
@@ -597,6 +602,23 @@ function buildRouteSummaries(file: FileRoute): string[] {
 
 const INITIAL_TASKS: TaskMap[] = [createTask('タスクA')];
 
+function useIsMobile(maxWidth = 720) {
+  const getMatches = () => window.matchMedia(`(max-width: ${maxWidth}px)`).matches;
+  const [isMobile, setIsMobile] = useState(getMatches);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const sync = () => setIsMobile(mediaQuery.matches);
+
+    sync();
+    mediaQuery.addEventListener('change', sync);
+
+    return () => mediaQuery.removeEventListener('change', sync);
+  }, [maxWidth]);
+
+  return isMobile;
+}
+
 function App() {
   const [tasks, setTasks] = useState<TaskMap[]>(INITIAL_TASKS);
   const [activeTaskId, setActiveTaskId] = useState(INITIAL_TASKS[0].id);
@@ -614,6 +636,9 @@ function App() {
   const [statusMessage, setStatusMessage] = useState(
     '保存OFF：この画面の内容は自動保存されません。',
   );
+  const isMobile = useIsMobile();
+  const [mobileRouteSummaryOpen, setMobileRouteSummaryOpen] = useState(false);
+  const deferredTasks = useDeferredValue(tasks);
 
   const nodeTypes = useMemo<NodeTypes>(
     () => ({
@@ -662,10 +687,34 @@ function App() {
     !!selectedNode &&
     (selectedNode.data.kind === 'split' || selectedNodeOutgoingCount === 0);
 
-  const routeSummaries = useMemo(() => buildRouteSummaries(activeFile), [activeFile]);
+  const shouldBuildRouteSummaries = !isMobile || mobileRouteSummaryOpen;
+
+  const routeSummaries = useMemo(() => {
+    if (!shouldBuildRouteSummaries) {
+      return ['ルート一覧を開くと表示します。'];
+    }
+
+    return buildRouteSummaries(activeFile);
+  }, [activeFile, shouldBuildRouteSummaries]);
+
+  const displayedEdges = useMemo<FlowEdge[]>(() => {
+    if (!isMobile) {
+      return edges;
+    }
+
+    return edges.map((edge) => ({
+      ...edge,
+      data: {
+        action: edge.data?.action ?? '移動',
+        memo: edge.data?.memo ?? '',
+        ...edge.data,
+        lightweight: true,
+      },
+    }));
+  }, [edges, isMobile]);
 
   const securityWarnings = useMemo(() => {
-    const values = tasks.flatMap((task) => [
+    const values = deferredTasks.flatMap((task) => [
       task.title,
       task.summary,
       ...task.files.flatMap((file) => [
@@ -685,7 +734,7 @@ function App() {
     ]);
 
     return scanSensitiveText(values.map(String));
-  }, [tasks]);
+  }, [deferredTasks]);
 
   const hasSecurityWarnings = securityWarnings.length > 0;
 
@@ -1616,13 +1665,17 @@ function App() {
       return;
     }
 
-    const payload = JSON.stringify({
-      tasks,
-      activeTaskId,
-      savedAt: new Date().toISOString(),
-    });
+    const timerId = window.setTimeout(() => {
+      const payload = JSON.stringify({
+        tasks,
+        activeTaskId,
+        savedAt: new Date().toISOString(),
+      });
 
-    storage.setItem(getStorageKey(saveMode), payload);
+      storage.setItem(getStorageKey(saveMode), payload);
+    }, 500);
+
+    return () => window.clearTimeout(timerId);
   }, [activeTaskId, hasSecurityWarnings, saveMode, tasks]);
 
   return (
@@ -1907,7 +1960,7 @@ function App() {
           <div className="flow-area">
             <ReactFlow<FlowNode, FlowEdge>
               nodes={nodes}
-              edges={edges}
+              edges={displayedEdges}
               nodeTypes={nodeTypes}
               edgeTypes={edgeTypes}
               onNodesChange={onNodesChange}
@@ -1942,24 +1995,30 @@ function App() {
               selectionOnDrag={false}
               fitView
             >
-              <Background color="#bfd5cf" gap={24} />
+              {!isMobile && <Background color="#bfd5cf" gap={24} />}
               <Controls position="bottom-left" />
-              <MiniMap pannable zoomable nodeStrokeWidth={3} position="bottom-right" />
+              {!isMobile && <MiniMap pannable zoomable nodeStrokeWidth={3} position="bottom-right" />}
             </ReactFlow>
           </div>
 
         </section>
 
-        <details className="route-summary-card mobile-route-summary">
+        <details
+          className="route-summary-card mobile-route-summary"
+          open={mobileRouteSummaryOpen}
+          onToggle={(event) => setMobileRouteSummaryOpen(event.currentTarget.open)}
+        >
           <summary className="mobile-summary-toggle">
             <span>ルート一覧</span>
             <strong>{activeFile.label}</strong>
           </summary>
-          <ol>
-            {routeSummaries.map((summary, index) => (
-              <li key={`mobile-${summary}-${index}`}>{summary}</li>
-            ))}
-          </ol>
+          {mobileRouteSummaryOpen && (
+            <ol>
+              {routeSummaries.map((summary, index) => (
+                <li key={`mobile-${summary}-${index}`}>{summary}</li>
+              ))}
+            </ol>
+          )}
         </details>
 
         <section className="mobile-storage-card">
