@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -96,6 +96,12 @@ type TaskMap = {
 type ConnectMode = {
   sourceId: string;
   label: string;
+};
+
+type EditModalAnchor = {
+  x: number;
+  y: number;
+  placement: 'above' | 'below';
 };
 
 const STORAGE_KEY_SESSION = 'pathless-map-session-draft-v8';
@@ -597,8 +603,10 @@ function App() {
   );
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [saveMode, setSaveMode] = useState<SaveMode>('off');
+  const flowCardRef = useRef<HTMLElement | null>(null);
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalAnchor, setEditModalAnchor] = useState<EditModalAnchor | null>(null);
   const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
   const [insertKind, setInsertKind] = useState<NodeKind>('operation');
   const [statusMessage, setStatusMessage] = useState(
@@ -678,6 +686,33 @@ function App() {
   }, [tasks]);
 
   const hasSecurityWarnings = securityWarnings.length > 0;
+
+  const openEditModalAt = (event?: { clientX: number; clientY: number }) => {
+    const cardRect = flowCardRef.current?.getBoundingClientRect();
+
+    if (!event || !cardRect) {
+      setEditModalAnchor(null);
+      setEditModalOpen(true);
+      return;
+    }
+
+    const preferredWidth = cardRect.width <= 520 ? 340 : 520;
+    const horizontalMargin = Math.min(preferredWidth / 2 + 12, cardRect.width / 2);
+    const rawX = event.clientX - cardRect.left;
+    const rawY = event.clientY - cardRect.top;
+    const minX = horizontalMargin;
+    const maxX = Math.max(horizontalMargin, cardRect.width - horizontalMargin);
+    const x = Math.min(Math.max(rawX, minX), maxX);
+    const y = Math.min(Math.max(rawY, 72), Math.max(72, cardRect.height - 24));
+    const placement = y < 330 ? 'below' : 'above';
+
+    setEditModalAnchor({ x, y, placement });
+    setEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalOpen(false);
+  };
 
   const canCreateOutgoingFrom = (sourceId: string) => {
     const sourceNode = nodes.find((node) => node.id === sourceId);
@@ -1500,6 +1535,51 @@ function App() {
     );
   };
 
+  const renderStorageControls = (mobile = false) => (
+    <div className={mobile ? 'storage-box storage-box--mobile' : 'storage-box'}>
+      <label>
+        保存モード
+        <select
+          value={saveMode}
+          onChange={(event) => {
+            const nextMode = event.target.value as SaveMode;
+            setSaveMode(nextMode);
+
+            if (nextMode === 'off') {
+              setStatusMessage('保存OFF：この画面の内容は自動保存されません。');
+            }
+
+            if (nextMode === 'session') {
+              setStatusMessage(
+                '一時保存：ブラウザ内に一時保存します。機密は入力しないでください。',
+              );
+            }
+
+            if (nextMode === 'local') {
+              setStatusMessage(
+                '端末保存：この端末に残ります。共有端末では使わないでください。',
+              );
+            }
+          }}
+        >
+          <option value="off">保存OFF</option>
+          <option value="session">一時保存</option>
+          <option value="local">端末保存</option>
+        </select>
+      </label>
+
+      <div className="storage-actions">
+        <button onClick={saveDraft}>保存</button>
+        <button onClick={loadDraft}>読込</button>
+        <button className="danger-button" onClick={resetMap}>
+          全削除
+        </button>
+      </div>
+
+      <p>{statusMessage}</p>
+    </div>
+  );
+
   useEffect(() => {
     if (saveMode === 'off' || hasSecurityWarnings) {
       return;
@@ -1659,7 +1739,7 @@ function App() {
         </div>
       </section>
 
-      <section className="route-summary-card">
+      <section className="route-summary-card desktop-route-summary">
         <div className="route-summary-heading">
           <div>
             <p>Route Summary</p>
@@ -1709,7 +1789,7 @@ function App() {
           </div>
         </aside>
 
-        <section className="flow-card">
+        <section className="flow-card" ref={flowCardRef}>
           <div className="flow-toolbar">
             <div>
               <strong>Route Canvas</strong>
@@ -1746,13 +1826,13 @@ function App() {
 
                 setSelectedNodeId(node.id);
                 setSelectedEdgeId(null);
-                setEditModalOpen(true);
+                openEditModalAt(_);
               }}
               onEdgeClick={(_, edge) => {
                 setSelectedEdgeId(edge.id);
                 setSelectedNodeId(null);
                 setConnectMode(null);
-                setEditModalOpen(true);
+                openEditModalAt(_);
               }}
               onPaneClick={() => {
                 setSelectedNodeId(null);
@@ -1772,9 +1852,18 @@ function App() {
                 className="edit-modal-backdrop"
                 role="dialog"
                 aria-modal="true"
-                onClick={() => setEditModalOpen(false)}
+                onClick={closeEditModal}
               >
-                <section className="edit-modal-card" onClick={(event) => event.stopPropagation()}>
+                <section
+                  className="edit-modal-card"
+                  data-placement={editModalAnchor?.placement ?? 'above'}
+                  style={
+                    editModalAnchor
+                      ? { left: `${editModalAnchor.x}px`, top: `${editModalAnchor.y}px` }
+                      : undefined
+                  }
+                  onClick={(event) => event.stopPropagation()}
+                >
                   <div className="edit-modal-heading">
                     <div>
                       <p>Edit</p>
@@ -1782,7 +1871,7 @@ function App() {
                     </div>
                     <button
                       className="modal-close-button"
-                      onClick={() => setEditModalOpen(false)}
+                      onClick={closeEditModal}
                       aria-label="編集を閉じる"
                     >
                       ×
@@ -1796,6 +1885,26 @@ function App() {
               </div>
             )}
 
+        </section>
+
+        <details className="route-summary-card mobile-route-summary">
+          <summary className="mobile-summary-toggle">
+            <span>ルート一覧</span>
+            <strong>{activeFile.label}</strong>
+          </summary>
+          <ol>
+            {routeSummaries.map((summary, index) => (
+              <li key={`mobile-${summary}-${index}`}>{summary}</li>
+            ))}
+          </ol>
+        </details>
+
+        <section className="mobile-storage-card">
+          <div className="mobile-card-heading">
+            <p>Storage</p>
+            <h2>保存設定</h2>
+          </div>
+          {renderStorageControls(true)}
         </section>
 
         <aside className="edit-panel">
@@ -1813,48 +1922,7 @@ function App() {
           {selectedNode && renderNodeEditForm()}
           {selectedEdge && renderEdgeEditForm()}
 
-          <div className="storage-box">
-            <label>
-              保存モード
-              <select
-                value={saveMode}
-                onChange={(event) => {
-                  const nextMode = event.target.value as SaveMode;
-                  setSaveMode(nextMode);
-
-                  if (nextMode === 'off') {
-                    setStatusMessage('保存OFF：この画面の内容は自動保存されません。');
-                  }
-
-                  if (nextMode === 'session') {
-                    setStatusMessage(
-                      '一時保存：ブラウザ内に一時保存します。機密は入力しないでください。',
-                    );
-                  }
-
-                  if (nextMode === 'local') {
-                    setStatusMessage(
-                      '端末保存：この端末に残ります。共有端末では使わないでください。',
-                    );
-                  }
-                }}
-              >
-                <option value="off">保存OFF</option>
-                <option value="session">一時保存</option>
-                <option value="local">端末保存</option>
-              </select>
-            </label>
-
-            <div className="storage-actions">
-              <button onClick={saveDraft}>保存</button>
-              <button onClick={loadDraft}>読込</button>
-              <button className="danger-button" onClick={resetMap}>
-                全削除
-              </button>
-            </div>
-
-            <p>{statusMessage}</p>
-          </div>
+          {renderStorageControls()}
         </aside>
       </section>
     </main>
