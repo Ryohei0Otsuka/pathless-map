@@ -2421,3 +2421,203 @@ body,
     cursor: grabbing;
   }
 }
+
+/* === Final SP screen-fit fix ===
+   The mobile view must fit the viewport first. React Flow can pan inside the canvas,
+   but the page itself should not become a wide desktop-like layout. */
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  min-width: 0;
+}
+
+.app-shell {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-shell {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 8px;
+    overflow-x: hidden;
+  }
+
+  .hero,
+  .security-strip,
+  .warning-box,
+  .map-control-panel,
+  .workspace,
+  .flow-card,
+  .flow-area,
+  .parts-panel,
+  .mobile-route-summary,
+  .mobile-storage-card {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .hero {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .hero h1 {
+    font-size: 1.55rem;
+  }
+
+  .hero p {
+    font-size: 0.74rem;
+  }
+
+  .security-strip {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 9px;
+  }
+
+  .map-control-panel {
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .control-line,
+  .control-line--task,
+  .control-line--file {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .control-label {
+    display: none;
+  }
+
+  .control-tabs,
+  .tabs-scroll,
+  .file-space {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .control-tabs::-webkit-scrollbar,
+  .tabs-scroll::-webkit-scrollbar,
+  .file-space::-webkit-scrollbar,
+  .parts-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-button,
+  .file-tab {
+    flex: 0 0 auto;
+    max-width: 62vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .add-tab-button {
+    flex: 0 0 auto;
+    min-width: 0;
+    max-width: 86px;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .flow-card {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .flow-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 8px 9px;
+  }
+
+  .flow-toolbar strong {
+    font-size: 0.9rem;
+  }
+
+  .flow-area {
+    height: 66svh !important;
+    min-height: 430px !important;
+    max-height: 560px !important;
+    overflow: hidden !important;
+  }
+
+  .flow-area .react-flow,
+  .flow-area .react-flow__renderer,
+  .flow-area .react-flow__pane {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+  }
+
+  .flow-area .react-flow__minimap {
+    display: none;
+  }
+
+  .flow-area .react-flow__controls {
+    transform: scale(0.86);
+    transform-origin: left bottom;
+  }
+
+  .parts-panel {
+    padding: 8px;
+  }
+
+  .parts-list {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .part-button {
+    flex: 0 0 104px;
+    min-width: 104px;
+    max-width: 112px;
+  }
+
+  .mobile-route-summary,
+  .mobile-storage-card {
+    overflow: hidden;
+  }
+
+  .edit-modal-card {
+    width: min(300px, calc(100% - 16px)) !important;
+    max-height: calc(100% - 16px) !important;
+  }
+}
