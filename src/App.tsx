@@ -690,9 +690,7 @@ function App() {
   const hasSecurityWarnings = securityWarnings.length > 0;
 
   const openEditModalAt = (event?: { clientX: number; clientY: number }) => {
-    const cardRect = flowCardRef.current?.getBoundingClientRect();
-
-    if (!event || !cardRect) {
+    if (!event) {
       setEditModalAnchor(null);
       setEditModalOpen(true);
       return;
@@ -701,49 +699,31 @@ function App() {
     const margin = 12;
     const gap = 12;
     const isMobile = window.matchMedia('(max-width: 720px)').matches;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
 
-    if (isMobile) {
-      const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
-      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-      const width = Math.max(260, Math.min(330, viewportWidth - margin * 2));
-      const maxHeight = Math.max(280, Math.min(520, viewportHeight - margin * 2));
-
-      const left = Math.min(
-        Math.max(event.clientX - width / 2, margin),
-        Math.max(margin, viewportWidth - width - margin),
-      );
-
-      const canShowAbove = event.clientY - maxHeight - gap >= margin;
-      const placement: EditModalAnchor['placement'] = canShowAbove ? 'above' : 'below';
-      const preferredTop = canShowAbove
-        ? event.clientY - maxHeight - gap
-        : event.clientY + gap;
-      const top = Math.min(
-        Math.max(preferredTop, margin),
-        Math.max(margin, viewportHeight - maxHeight - margin),
-      );
-
-      setEditModalAnchor({ x: left, y: top, width, maxHeight, placement });
-      setEditModalOpen(true);
-      return;
-    }
-
-    const rawX = event.clientX - cardRect.left;
-    const rawY = event.clientY - cardRect.top;
-    const width = Math.max(260, Math.min(440, cardRect.width - margin * 2));
-    const maxHeight = Math.max(260, Math.min(440, cardRect.height - margin * 2));
-
-    const left = Math.min(
-      Math.max(rawX - width / 2, margin),
-      Math.max(margin, cardRect.width - width - margin),
+    const width = Math.min(
+      isMobile ? 340 : 480,
+      Math.max(260, viewportWidth - margin * 2),
+    );
+    const maxHeight = Math.min(
+      isMobile ? 620 : 520,
+      Math.max(260, viewportHeight - margin * 2),
     );
 
-    const canShowAbove = rawY - maxHeight - gap >= margin;
+    const left = Math.min(
+      Math.max(event.clientX - width / 2, margin),
+      Math.max(margin, viewportWidth - width - margin),
+    );
+
+    const canShowAbove = event.clientY - maxHeight - gap >= margin;
     const placement: EditModalAnchor['placement'] = canShowAbove ? 'above' : 'below';
-    const preferredTop = canShowAbove ? rawY - maxHeight - gap : rawY + gap;
+    const preferredTop = canShowAbove
+      ? event.clientY - maxHeight - gap
+      : event.clientY + gap;
     const top = Math.min(
       Math.max(preferredTop, margin),
-      Math.max(margin, cardRect.height - maxHeight - margin),
+      Math.max(margin, viewportHeight - maxHeight - margin),
     );
 
     setEditModalAnchor({ x: left, y: top, width, maxHeight, placement });
@@ -1905,49 +1885,6 @@ function App() {
             </ReactFlow>
           </div>
 
-            {editModalOpen && (selectedNode || selectedEdge) && (
-              <div
-                className="edit-modal-backdrop"
-                role="dialog"
-                aria-modal="true"
-                onClick={closeEditModal}
-              >
-                <section
-                  className="edit-modal-card"
-                  data-placement={editModalAnchor?.placement ?? 'above'}
-                  style={
-                    editModalAnchor
-                      ? {
-                          left: `${editModalAnchor.x}px`,
-                          top: `${editModalAnchor.y}px`,
-                          width: `${editModalAnchor.width}px`,
-                          maxHeight: `${editModalAnchor.maxHeight}px`,
-                        }
-                      : undefined
-                  }
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="edit-modal-heading">
-                    <div>
-                      <p>Edit</p>
-                      <h2>{selectedNode ? 'パーツを編集' : '導線を編集'}</h2>
-                    </div>
-                    <button
-                      className="modal-close-button"
-                      onClick={closeEditModal}
-                      aria-label="編集を閉じる"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="edit-modal-body">
-                    {selectedNode ? renderNodeEditForm() : renderEdgeEditForm()}
-                  </div>
-                </section>
-              </div>
-            )}
-
         </section>
 
         <details className="route-summary-card mobile-route-summary">
@@ -1988,6 +1925,50 @@ function App() {
           {renderStorageControls()}
         </aside>
       </section>
+
+      {editModalOpen && (selectedNode || selectedEdge) && (
+        <div
+          className="edit-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeEditModal}
+        >
+          <section
+            className="edit-modal-card"
+            data-placement={editModalAnchor?.placement ?? 'above'}
+            style={
+              editModalAnchor
+                ? {
+                    left: `${editModalAnchor.x}px`,
+                    top: `${editModalAnchor.y}px`,
+                    width: `${editModalAnchor.width}px`,
+                    maxHeight: `${editModalAnchor.maxHeight}px`,
+                  }
+                : undefined
+            }
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="edit-modal-heading">
+              <div>
+                <p>Edit</p>
+                <h2>{selectedNode ? 'パーツを編集' : '導線を編集'}</h2>
+              </div>
+              <button
+                className="modal-close-button"
+                onClick={closeEditModal}
+                aria-label="編集を閉じる"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="edit-modal-body">
+              {selectedNode ? renderNodeEditForm() : renderEdgeEditForm()}
+            </div>
+          </section>
+        </div>
+      )}
+
     </main>
   );
 }

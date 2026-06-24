@@ -2965,3 +2965,51 @@ body {
     transform: none !important;
   }
 }
+
+/* === Final edit modal root fix ===
+   The edit modal is rendered at app root, not inside Route Canvas.
+   This prevents SP clipping by .flow-card / .flow-area overflow and allows the modal
+   to extend beyond the Canvas while staying inside the viewport. */
+.edit-modal-backdrop {
+  position: fixed !important;
+  z-index: 10000 !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  background: rgba(18, 38, 35, 0.12);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.edit-modal-card {
+  position: fixed !important;
+  transform: none !important;
+  min-width: 0;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  pointer-events: auto !important;
+}
+
+.edit-modal-card[data-placement='below'],
+.edit-modal-card[data-placement='above'] {
+  transform: none !important;
+}
+
+.edit-modal-card::after {
+  display: none !important;
+}
+
+@media (max-width: 720px) {
+  .edit-modal-backdrop {
+    background: rgba(18, 38, 35, 0.18);
+  }
+
+  .edit-modal-card {
+    width: min(340px, calc(100vw - 24px)) !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: 22px;
+  }
+}
