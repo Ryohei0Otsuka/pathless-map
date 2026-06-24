@@ -1,0 +1,19 @@
+{
+  "name": "Pathless Map",
+  "short_name": "Pathless",
+  "icons": [
+    {
+      "src": "/pathless-map/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/pathless-map/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#2f7166",
+  "background_color": "#f8fffc",
+  "display": "standalone"
+}
