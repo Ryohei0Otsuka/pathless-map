@@ -1660,9 +1660,14 @@ function App() {
         </section>
       )}
 
-      <section className="task-board">
-        <div className="tabs-row">
-          <div className="tabs-scroll">
+      <section className="map-control-panel" aria-label="マップ切替">
+        <div className="control-line control-line--task">
+          <div className="control-label">
+            <span>Task</span>
+            <strong>タスク</strong>
+          </div>
+
+          <div className="tabs-scroll control-tabs" role="tablist" aria-label="タスク一覧">
             {tasks.map((task) => (
               <button
                 key={task.id}
@@ -1679,8 +1684,8 @@ function App() {
           </button>
         </div>
 
-        <div className="task-meta">
-          <label>
+        <div className="control-detail-row control-detail-row--task">
+          <label className="control-field control-field--name">
             タスク名
             <input
               value={activeTask.title}
@@ -1689,7 +1694,7 @@ function App() {
             />
           </label>
 
-          <label>
+          <label className="control-field control-field--memo">
             タスクメモ
             <input
               value={activeTask.summary}
@@ -1702,11 +1707,14 @@ function App() {
             タスク削除
           </button>
         </div>
-      </section>
 
-      <section className="file-board">
-        <div className="file-tabs">
-          <div className="tabs-scroll">
+        <div className="control-line control-line--file">
+          <div className="control-label">
+            <span>File</span>
+            <strong>ファイル導線</strong>
+          </div>
+
+          <div className="tabs-scroll control-tabs file-space" role="tablist" aria-label="ファイル導線一覧">
             {activeTask.files.map((file) => (
               <button
                 key={file.id}
@@ -1723,8 +1731,8 @@ function App() {
           </button>
         </div>
 
-        <div className="file-meta">
-          <label>
+        <div className="control-detail-row control-detail-row--file">
+          <label className="control-field control-field--file-name">
             ファイル導線名
             <input
               value={activeFile.label}
