@@ -242,7 +242,6 @@
 .edit-form textarea,
 .edit-form select,
 .storage-box select,
-.insert-box select,
 .mobile-name-editor-grid input {
   width: 100%;
   min-width: 0;
@@ -258,8 +257,7 @@
 .edit-form input:focus,
 .edit-form textarea:focus,
 .edit-form select:focus,
-.storage-box select:focus,
-.insert-box select:focus,
+.storage-box select:focus:focus,
 .mobile-name-editor-grid input:focus {
   border-color: rgba(47, 113, 102, 0.48);
   box-shadow: 0 0 0 4px rgba(47, 113, 102, 0.12);

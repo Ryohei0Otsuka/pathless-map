@@ -181,6 +181,10 @@
   background: linear-gradient(135deg, #e8ecff, #fbfcff);
 }
 
+.route-node--output {
+  background: linear-gradient(135deg, #e0fff3, #f8fffb);
+}
+
 .route-node--folder {
   background: linear-gradient(135deg, #e7f5dc, #f8fff2);
 }

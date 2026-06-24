@@ -724,15 +724,13 @@
   .edit-form input,
   .edit-form textarea,
   .edit-form select,
-  .storage-box select,
-  .insert-box select {
+  .storage-box select {
     padding: 10px 11px;
     border-radius: 14px;
     font-size: 0.9rem;
   }
 
-  .node-actions button,
-  .insert-box button {
+  .node-actions button {
     width: auto;
     padding: 9px 13px;
     font-size: 0.84rem;

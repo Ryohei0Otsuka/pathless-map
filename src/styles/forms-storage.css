@@ -39,7 +39,6 @@
 
 .edit-form label,
 .storage-box label,
-.insert-box label,
 .mobile-name-editor-grid label {
   display: grid;
   gap: 7px;
@@ -110,27 +109,6 @@
   padding: 10px 8px;
   color: #4a3d61;
   background: #ffffff;
-}
-
-.insert-box {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px dashed rgba(47, 113, 102, 0.24);
-  border-radius: 18px;
-  background: rgba(230, 247, 241, 0.72);
-}
-
-.insert-box p {
-  margin: 0;
-  color: #2f514b;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.insert-box button {
-  color: #f8fffc;
-  background: #2f7166;
 }
 
 .storage-box {
