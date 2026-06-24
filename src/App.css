@@ -1022,8 +1022,8 @@ button:disabled {
 
 .edit-modal-backdrop {
   position: absolute;
-  z-index: 80;
-  inset: 64px 0 0;
+  z-index: 120;
+  inset: 0;
   overflow: hidden;
   pointer-events: auto;
   background: transparent;
@@ -1575,7 +1575,7 @@ button:disabled {
   }
 
   .edit-modal-backdrop {
-    inset: 52px 0 0;
+    inset: 0;
   }
 
   .edit-modal-card {
