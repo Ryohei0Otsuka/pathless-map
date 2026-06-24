@@ -2930,3 +2930,38 @@ body {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
   }
 }
+
+
+/* === Mobile edit modal freedom ===
+   On SP, the edit modal should be anchored near the tapped item, but it must not be
+   clipped by the Route Canvas. PC keeps the canvas-contained modal behavior. */
+@media (max-width: 720px) {
+  .edit-modal-backdrop {
+    position: fixed !important;
+    z-index: 10000 !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    background: rgba(18, 38, 35, 0.18);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .edit-modal-card {
+    position: fixed !important;
+    transform: none !important;
+    width: min(330px, calc(100vw - 24px)) !important;
+    max-height: min(520px, calc(100dvh - 24px)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    pointer-events: auto !important;
+  }
+
+  .edit-modal-card[data-placement='below'],
+  .edit-modal-card[data-placement='above'] {
+    transform: none !important;
+  }
+}

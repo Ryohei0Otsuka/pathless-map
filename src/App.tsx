@@ -700,17 +700,38 @@ function App() {
 
     const margin = 12;
     const gap = 12;
+    const isMobile = window.matchMedia('(max-width: 720px)').matches;
+
+    if (isMobile) {
+      const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const width = Math.max(260, Math.min(330, viewportWidth - margin * 2));
+      const maxHeight = Math.max(280, Math.min(520, viewportHeight - margin * 2));
+
+      const left = Math.min(
+        Math.max(event.clientX - width / 2, margin),
+        Math.max(margin, viewportWidth - width - margin),
+      );
+
+      const canShowAbove = event.clientY - maxHeight - gap >= margin;
+      const placement: EditModalAnchor['placement'] = canShowAbove ? 'above' : 'below';
+      const preferredTop = canShowAbove
+        ? event.clientY - maxHeight - gap
+        : event.clientY + gap;
+      const top = Math.min(
+        Math.max(preferredTop, margin),
+        Math.max(margin, viewportHeight - maxHeight - margin),
+      );
+
+      setEditModalAnchor({ x: left, y: top, width, maxHeight, placement });
+      setEditModalOpen(true);
+      return;
+    }
+
     const rawX = event.clientX - cardRect.left;
     const rawY = event.clientY - cardRect.top;
-    const isMobile = cardRect.width <= 720;
-    const width = Math.max(
-      260,
-      Math.min(isMobile ? 320 : 440, cardRect.width - margin * 2),
-    );
-    const maxHeight = Math.max(
-      260,
-      Math.min(isMobile ? 360 : 440, cardRect.height - margin * 2),
-    );
+    const width = Math.max(260, Math.min(440, cardRect.width - margin * 2));
+    const maxHeight = Math.max(260, Math.min(440, cardRect.height - margin * 2));
 
     const left = Math.min(
       Math.max(rawX - width / 2, margin),
