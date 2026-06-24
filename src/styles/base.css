@@ -194,8 +194,7 @@ button:disabled {
 .storage-actions button,
 .primary-button,
 .add-tab-button,
-.node-actions button,
-.split-actions button {
+.node-actions button {
   border: 0;
   border-radius: 999px;
   padding: 10px 14px;

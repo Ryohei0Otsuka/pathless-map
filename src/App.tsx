@@ -28,32 +28,37 @@ import './styles/index.css';
 
 type NodeKind =
   | 'source'
+  | 'place'
+  | 'process'
+  | 'output'
+  | 'storage'
+  | 'memo'
+  // Legacy kinds are kept so old saved drafts can still be opened.
   | 'device'
   | 'operation'
   | 'tool'
-  | 'output'
   | 'folder'
   | 'split'
-  | 'service'
-  | 'storage'
-  | 'memo';
+  | 'service';
 
 type ActionKind =
   | '取得'
   | '移動'
+  | '確認'
   | '圧縮'
   | '解凍'
   | '加工'
   | 'リネーム'
   | 'ツール使用'
-  | '出力'
   | 'フォルダ作成'
-  | '判断'
-  | '分岐'
+  | '出力'
   | '格納'
   | '戻し'
   | '保留'
-  | '完了';
+  | '完了'
+  // Legacy actions are kept so old saved drafts can still be opened.
+  | '判断'
+  | '分岐';
 
 type SaveMode = 'off' | 'session' | 'local';
 
@@ -116,14 +121,14 @@ const STORAGE_KEY_LOCAL = 'pathless-map-local-draft-v8';
 const ACTIONS: ActionKind[] = [
   '取得',
   '移動',
+  '確認',
   '圧縮',
   '解凍',
   '加工',
   'リネーム',
   'ツール使用',
-  '出力',
   'フォルダ作成',
-  '判断',
+  '出力',
   '格納',
   '戻し',
   '保留',
@@ -133,55 +138,34 @@ const ACTIONS: ActionKind[] = [
 const ROUTE_LABELS = [
   '取得',
   '移動',
+  '確認',
   '圧縮',
   '解凍',
   '加工',
   'リネーム',
   'ツール使用',
-  '出力',
   'フォルダ作成',
-  '判断',
-  'OK',
-  'NG',
-  '要確認',
-  '通常',
-  '例外',
-  'ルートA',
-  'ルートB',
-  '格納先A',
-  '格納先B',
-  '別ファイル生成',
-  '再加工',
+  '出力',
+  '格納',
   '戻し',
   '保留',
-  '格納',
   '完了',
 ];
 
-const SPLIT_ROUTE_LABELS = [
-  'OK',
-  'NG',
-  '要確認',
-  '通常',
-  '例外',
-  '戻し',
-  '保留',
-  '格納先A',
-] as const;
-
-type SplitRouteLabel = (typeof SPLIT_ROUTE_LABELS)[number];
-
 const NODE_KIND_LABELS: Record<NodeKind, string> = {
   source: '取得元',
-  device: '端末・場所',
-  operation: '工程',
-  tool: 'ツール',
+  place: '場所',
+  process: '処理',
   output: '出力物',
-  folder: 'フォルダ作成',
-  split: '判断',
-  service: '一般サービス',
   storage: '格納先',
   memo: 'メモ',
+  // Legacy kinds are displayed as the simplified categories.
+  device: '場所',
+  operation: '処理',
+  tool: '処理',
+  folder: '処理',
+  split: '処理',
+  service: '場所',
 };
 
 const NODE_TEMPLATES: NodeTemplate[] = [
@@ -193,66 +177,38 @@ const NODE_TEMPLATES: NodeTemplate[] = [
     icon: 'IN',
   },
   {
-    kind: 'device',
-    title: '端末・場所',
+    kind: 'place',
+    title: '場所',
     action: '移動',
-    description: '端末A・作業場所Xなど',
-    icon: 'PC',
+    description: '端末・作業場所・一時置き場',
+    icon: 'PL',
   },
   {
-    kind: 'operation',
-    title: '工程',
+    kind: 'process',
+    title: '処理',
     action: '加工',
-    description: '圧縮・解凍・加工など',
-    icon: 'OP',
-  },
-  {
-    kind: 'tool',
-    title: 'ツール使用',
-    action: 'ツール使用',
-    description: 'ツールAで処理する',
-    icon: 'TL',
+    description: '加工・確認・圧縮・解凍・ツール使用など',
+    icon: 'DO',
   },
   {
     kind: 'output',
     title: '出力物',
     action: '出力',
-    description: '工程やツール使用の結果としてできる抽象ファイル',
+    description: '処理の結果としてできる抽象ファイル',
     icon: 'GEN',
-  },
-  {
-    kind: 'folder',
-    title: 'フォルダ作成',
-    action: 'フォルダ作成',
-    description: '格納前に抽象フォルダを作る',
-    icon: 'FD',
-  },
-  {
-    kind: 'split',
-    title: '判断',
-    action: '判断',
-    description: '条件や確認結果で流れが変わる地点',
-    icon: 'IF',
-  },
-  {
-    kind: 'service',
-    title: '一般サービス',
-    action: '移動',
-    description: 'Slack / SharePoint など',
-    icon: 'SV',
   },
   {
     kind: 'storage',
     title: '格納先',
     action: '格納',
-    description: '最終格納・一時保管',
+    description: '最終格納・一時保管・提出先',
     icon: 'OUT',
   },
   {
     kind: 'memo',
     title: 'メモ',
     action: '保留',
-    description: '補足・注意・例外',
+    description: '補足・注意・例外・確認待ち',
     icon: '!',
   },
 ];
@@ -282,12 +238,9 @@ function createStarterFile(label: string): FileRoute {
   const prefix = createId('flow');
 
   const sourceId = `${prefix}-source`;
-  const deviceId = `${prefix}-device`;
-  const operationId = `${prefix}-operation`;
-  const toolId = `${prefix}-tool`;
+  const placeId = `${prefix}-place`;
+  const processId = `${prefix}-process`;
   const outputId = `${prefix}-output`;
-  const folderId = `${prefix}-folder`;
-  const serviceId = `${prefix}-service`;
   const storageId = `${prefix}-storage`;
 
   return {
@@ -306,75 +259,42 @@ function createStarterFile(label: string): FileRoute {
         },
       },
       {
-        id: deviceId,
+        id: placeId,
         type: 'routeCard',
-        position: { x: 270, y: 100 },
+        position: { x: 290, y: 100 },
         data: {
-          label: '端末A',
-          kind: 'device',
+          label: '場所A',
+          kind: 'place',
           action: '移動',
-          memo: '作業する端末・場所。実端末名や実パスは入れない。',
+          memo: '端末・作業場所・一時置き場など。実端末名や実パスは入れない。',
         },
       },
       {
-        id: operationId,
+        id: processId,
         type: 'routeCard',
-        position: { x: 520, y: 100 },
+        position: { x: 560, y: 100 },
         data: {
-          label: '工程A',
-          kind: 'operation',
+          label: '処理A',
+          kind: 'process',
           action: '加工',
-          memo: '圧縮・解凍・加工・リネームなど。',
-        },
-      },
-      {
-        id: toolId,
-        type: 'routeCard',
-        position: { x: 770, y: 100 },
-        data: {
-          label: 'ツールA',
-          kind: 'tool',
-          action: 'ツール使用',
-          memo: '処理に使うツール。実ツール名が機密の場合は抽象化する。',
+          memo: '加工・確認・圧縮・解凍・ツール使用・フォルダ作成など。',
         },
       },
       {
         id: outputId,
         type: 'routeCard',
-        position: { x: 1020, y: 100 },
+        position: { x: 830, y: 100 },
         data: {
           label: '出力物A',
           kind: 'output',
           action: '出力',
-          memo: '工程やツール使用の結果としてできる抽象ファイル。実ファイル名は入れない。',
-        },
-      },
-      {
-        id: folderId,
-        type: 'routeCard',
-        position: { x: 1270, y: 100 },
-        data: {
-          label: 'フォルダ作成A',
-          kind: 'folder',
-          action: 'フォルダ作成',
-          memo: '格納前に抽象フォルダを作成する。実フォルダ名や実パスは入れない。',
-        },
-      },
-      {
-        id: serviceId,
-        type: 'routeCard',
-        position: { x: 1520, y: 100 },
-        data: {
-          label: '一般サービスA',
-          kind: 'service',
-          action: '移動',
-          memo: 'Slack / SharePoint など。格納・共有に近い経由先として扱う。',
+          memo: '処理の結果としてできる抽象ファイル。実ファイル名は入れない。',
         },
       },
       {
         id: storageId,
         type: 'routeCard',
-        position: { x: 1770, y: 100 },
+        position: { x: 1100, y: 100 },
         data: {
           label: '格納先Y',
           kind: 'storage',
@@ -384,13 +304,10 @@ function createStarterFile(label: string): FileRoute {
       },
     ],
     edges: [
-      createEdge(sourceId, deviceId, '取得'),
-      createEdge(deviceId, operationId, '移動'),
-      createEdge(operationId, toolId, '加工'),
-      createEdge(toolId, outputId, '出力'),
-      createEdge(outputId, folderId, 'フォルダ作成'),
-      createEdge(folderId, serviceId, '移動'),
-      createEdge(serviceId, storageId, '格納'),
+      createEdge(sourceId, placeId, '取得'),
+      createEdge(placeId, processId, '移動'),
+      createEdge(processId, outputId, '出力'),
+      createEdge(outputId, storageId, '格納'),
     ],
   };
 }
@@ -421,14 +338,6 @@ function RouteNode(props: NodeProps<FlowNode>) {
       </div>
 
       <strong>{data.label}</strong>
-
-      {data.kind === 'split' && (
-        <div className="split-preview" aria-label="判断ルート">
-          <span>OK</span>
-          <span>NG</span>
-          <span>要確認</span>
-        </div>
-      )}
 
       {data.memo && <p>{data.memo}</p>}
 
@@ -640,6 +549,56 @@ function buildRouteSummaries(file: FileRoute): string[] {
   });
 
   return summaries.length > 0 ? summaries.slice(0, 12) : ['まだ導線がありません。'];
+}
+
+
+function normalizeLegacyKind(kind: NodeKind): NodeKind {
+  if (kind === 'device' || kind === 'service') {
+    return 'place';
+  }
+
+  if (kind === 'operation' || kind === 'tool' || kind === 'folder' || kind === 'split') {
+    return 'process';
+  }
+
+  return kind;
+}
+
+function normalizeLegacyAction(action: ActionKind): ActionKind {
+  if (action === '判断' || action === '分岐') {
+    return '確認';
+  }
+
+  return action;
+}
+
+function normalizeTasks(tasks: TaskMap[]): TaskMap[] {
+  return tasks.map((task) => ({
+    ...task,
+    files: task.files.map((file) => ({
+      ...file,
+      nodes: file.nodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          kind: normalizeLegacyKind(node.data.kind),
+          action: normalizeLegacyAction(node.data.action),
+        },
+      })),
+      edges: file.edges.map((edge) => ({
+        ...edge,
+        data: edge.data
+          ? {
+              ...edge.data,
+              action:
+                edge.data.action === '判断' || edge.data.action === '分岐'
+                  ? '確認'
+                  : edge.data.action,
+            }
+          : edge.data,
+      })),
+    })),
+  }));
 }
 
 const INITIAL_TASKS: TaskMap[] = [createTask('タスクA')];
@@ -1213,107 +1172,6 @@ function App() {
     setStatusMessage(`「${label}」で接続しました。`);
   };
 
-  const addSplitRoute = (routeLabel: SplitRouteLabel) => {
-    if (!selectedNode) {
-      return;
-    }
-
-    if (selectedNode.data.kind !== 'split') {
-      setStatusMessage('条件や確認結果で流れを分ける場合は「判断」パーツを選んでください。');
-      return;
-    }
-
-    const routeIndex = edges.filter((edge) => edge.source === selectedNode.id).length;
-
-    const routeSettings: Record<
-      SplitRouteLabel,
-      {
-        kind: NodeKind;
-        action: ActionKind;
-        label: string;
-        memo: string;
-      }
-    > = {
-      OK: {
-        kind: 'operation',
-        action: '加工',
-        label: '通常処理',
-        memo: '条件を満たした場合に進む流れ。',
-      },
-      NG: {
-        kind: 'memo',
-        action: '保留',
-        label: '確認・例外',
-        memo: '条件を満たさない場合や例外時の流れ。',
-      },
-      要確認: {
-        kind: 'memo',
-        action: '保留',
-        label: '要確認',
-        memo: '確認が必要な場合に一時停止する流れ。',
-      },
-      通常: {
-        kind: 'operation',
-        action: '加工',
-        label: '通常ルート',
-        memo: '通常時に進む流れ。',
-      },
-      例外: {
-        kind: 'memo',
-        action: '保留',
-        label: '例外対応',
-        memo: '例外時の扱いを整理する流れ。',
-      },
-      戻し: {
-        kind: 'operation',
-        action: '戻し',
-        label: '戻し先',
-        memo: '前工程へ戻す、または再処理する。',
-      },
-      保留: {
-        kind: 'memo',
-        action: '保留',
-        label: '保留メモ',
-        memo: '一時停止・確認待ち・例外など。',
-      },
-      格納先A: {
-        kind: 'storage',
-        action: '格納',
-        label: '格納先A',
-        memo: '判断後の格納先。',
-      },
-    };
-
-    const setting = routeSettings[routeLabel];
-
-    const newNode: FlowNode = {
-      id: createId(`node-${setting.kind}`),
-      type: 'routeCard',
-      position: {
-        x: selectedNode.position.x + 300,
-        y: selectedNode.position.y + routeIndex * 150,
-      },
-      data: {
-        label: setting.label,
-        kind: setting.kind,
-        action: setting.action,
-        memo: setting.memo,
-      },
-    };
-
-    updateActiveFile((file) => ({
-      ...file,
-      nodes: [...file.nodes, newNode],
-      edges: [...file.edges, createEdge(selectedNode.id, newNode.id, routeLabel)],
-    }));
-
-    setSelectedNodeId(newNode.id);
-    setSelectedEdgeId(null);
-    setEditModalOpen(true);
-    setConnectMode(null);
-    setStatusMessage(`判断から「${routeLabel}」を追加しました。`);
-  };
-
   const removeSelected = () => {
     if (selectedNodeId) {
       updateActiveFile((file) => ({
@@ -1455,12 +1313,13 @@ function App() {
         throw new Error('Invalid draft format');
       }
 
-      const nextTaskId = parsed.activeTaskId ?? parsed.tasks[0].id;
-      const nextTask = parsed.tasks.find((task) => task.id === nextTaskId) ?? parsed.tasks[0];
+      const normalizedTasks = normalizeTasks(parsed.tasks);
+      const nextTaskId = parsed.activeTaskId ?? normalizedTasks[0].id;
+      const nextTask = normalizedTasks.find((task) => task.id === nextTaskId) ?? normalizedTasks[0];
       const nextFile =
         nextTask.files.find((file) => file.id === nextTask.activeFileId) ?? nextTask.files[0];
 
-      setTasks(parsed.tasks);
+      setTasks(normalizedTasks);
       setActiveTaskId(nextTask.id);
       setSelectedNodeId(nextFile.nodes[0]?.id ?? null);
       setSelectedEdgeId(null);
@@ -1501,7 +1360,7 @@ function App() {
 
     setConnectMode({
       sourceId: selectedNode.id,
-      label: selectedNode.data.kind === 'split' ? '判断' : selectedNode.data.action,
+      label: selectedNode.data.action,
     });
     setEditModalOpen(false);
   };
@@ -1528,7 +1387,7 @@ function App() {
                 label: event.target.value,
               })
             }
-            placeholder="例：端末A / 出力物A / フォルダ作成A / 格納先Y"
+            placeholder="例：取得元A / 場所A / 処理A / 出力物A / 格納先Y"
           />
         </label>
 
@@ -1603,21 +1462,10 @@ function App() {
 
           {!selectedNodeCanStartRoute && (
             <p className="route-rule-message">
-              どのパーツからも複数の導線を伸ばせます。条件や確認結果で分ける場合は「判断」パーツを使ってください。
+              どのパーツからも複数の導線を伸ばせます。必要な流れをそのまま矢印でつないでください。
             </p>
           )}
         </div>
-
-        {selectedNode.data.kind === 'split' && (
-          <div className="split-actions">
-            <p>判断ルートを追加</p>
-            {SPLIT_ROUTE_LABELS.map((label) => (
-              <button key={label} onClick={() => addSplitRoute(label)}>
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
@@ -2008,7 +1856,7 @@ function App() {
             <div>
               <strong>Route Canvas</strong>
               <span>
-                各パーツから複数ルートを伸ばせます。条件で分ける場合は「判断」を使います。
+                ファイルの入口・作業場所・処理・出力物・格納先を、必要な数だけつないで整理します。
               </span>
             </div>
 
