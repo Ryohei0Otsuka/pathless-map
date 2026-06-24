@@ -2621,3 +2621,312 @@ body {
     max-height: calc(100% - 16px) !important;
   }
 }
+
+/* === Notebook tab polish: task tabs + file route tabs === */
+.map-control-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(80, 126, 118, 0.18);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(235, 249, 245, 0.62)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(73, 116, 108, 0.045) 0,
+      rgba(73, 116, 108, 0.045) 1px,
+      transparent 1px,
+      transparent 26px
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 18px 48px rgba(43, 76, 70, 0.1);
+}
+
+.map-control-panel::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: linear-gradient(180deg, #d9f1ea, #fff2df, #e5efff);
+  content: '';
+  opacity: 0.78;
+}
+
+.control-line--task,
+.control-line--file,
+.control-detail-row,
+.control-detail-row--task,
+.control-detail-row--file {
+  position: relative;
+  z-index: 1;
+}
+
+.control-label span {
+  color: #6d8f88;
+}
+
+.control-label strong {
+  color: #284743;
+}
+
+.control-tabs,
+.tabs-scroll,
+.file-space {
+  scrollbar-width: none;
+}
+
+.control-tabs::-webkit-scrollbar,
+.tabs-scroll::-webkit-scrollbar,
+.file-space::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-button,
+.file-tab,
+.add-tab-button {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.tab-button,
+.file-tab {
+  position: relative;
+  isolation: isolate;
+}
+
+.tab-button:hover,
+.file-tab:hover,
+.add-tab-button:hover {
+  transform: translateY(-1px);
+}
+
+@media (min-width: 721px) {
+  .map-control-panel {
+    padding: 0 16px 16px;
+    border-radius: 30px;
+  }
+
+  .control-line--task {
+    grid-template-columns: 96px minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 12px;
+    min-height: 70px;
+    padding: 12px 0 0;
+    border-bottom: 1px solid rgba(47, 113, 102, 0.18);
+  }
+
+  .control-line--task .control-label {
+    padding: 0 0 13px 4px;
+  }
+
+  .control-line--task .control-tabs {
+    align-items: flex-end;
+    gap: 5px;
+    padding: 0 2px;
+  }
+
+  .control-line--task .tab-button {
+    margin: 0 0 -1px;
+    padding: 12px 20px 13px;
+    border: 1px solid rgba(67, 112, 103, 0.18);
+    border-bottom-color: rgba(67, 112, 103, 0.1);
+    border-radius: 20px 20px 5px 5px;
+    color: #5d7772;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(230, 246, 241, 0.54));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.74),
+      0 8px 18px rgba(48, 78, 73, 0.05);
+    transform: translateY(5px);
+  }
+
+  .control-line--task .tab-button::before {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(47, 113, 102, 0.16);
+    box-shadow: 0 16px 0 rgba(47, 113, 102, 0.12);
+    content: '';
+  }
+
+  .control-line--task .tab-button.is-active {
+    z-index: 3;
+    color: #1f413d;
+    border-color: rgba(47, 113, 102, 0.24);
+    border-bottom-color: rgba(255, 255, 255, 0.96);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 255, 252, 0.94));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 -10px 24px rgba(48, 78, 73, 0.08),
+      0 12px 28px rgba(48, 78, 73, 0.08);
+    transform: translateY(1px);
+  }
+
+  .control-line--task .tab-button.is-active::after {
+    position: absolute;
+    right: 0;
+    bottom: -8px;
+    left: 0;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.96);
+    content: '';
+  }
+
+  .control-line--task .add-tab-button {
+    align-self: end;
+    margin-bottom: 10px;
+    border: 1px solid rgba(47, 113, 102, 0.16);
+    color: #315c55;
+    background: rgba(255, 255, 255, 0.54);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  .control-detail-row--task {
+    margin-top: 0;
+    padding: 16px 0 12px 4px;
+    border-radius: 0 0 22px 22px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0));
+  }
+
+  .control-line--file {
+    grid-template-columns: 116px minmax(0, 1fr) auto;
+    align-items: center;
+    margin-top: 6px;
+    padding: 12px;
+    border: 1px solid rgba(67, 112, 103, 0.15);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.38);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  }
+
+  .file-space {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 56px;
+    padding: 7px;
+    border: 1px solid rgba(67, 112, 103, 0.1);
+    border-radius: 19px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(238, 250, 246, 0.48));
+    box-shadow: inset 0 1px 8px rgba(47, 113, 102, 0.05);
+  }
+
+  .file-tab {
+    padding: 10px 16px;
+    border: 1px solid rgba(67, 112, 103, 0.14);
+    border-radius: 14px;
+    color: #4f6964;
+    background: rgba(255, 255, 255, 0.52);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  }
+
+  .file-tab.is-active {
+    color: #f9fffd;
+    border-color: rgba(47, 113, 102, 0.16);
+    background:
+      linear-gradient(135deg, rgba(47, 113, 102, 0.98), rgba(67, 150, 134, 0.9));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 12px 24px rgba(47, 113, 102, 0.18);
+  }
+
+  .control-line--file .add-tab-button {
+    border: 1px solid rgba(47, 113, 102, 0.14);
+    color: #315c55;
+    background: rgba(255, 255, 255, 0.52);
+  }
+}
+
+@media (max-width: 720px) {
+  .map-control-panel {
+    padding: 7px;
+    border-radius: 22px;
+  }
+
+  .map-control-panel::before {
+    width: 5px;
+  }
+
+  .control-line,
+  .control-line--task,
+  .control-line--file {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    padding-left: 4px;
+  }
+
+  .control-line--task {
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(47, 113, 102, 0.12);
+  }
+
+  .control-line--file {
+    padding-top: 7px;
+  }
+
+  .control-tabs,
+  .tabs-scroll,
+  .file-space {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid rgba(67, 112, 103, 0.12);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.44);
+    box-shadow: inset 0 1px 8px rgba(47, 113, 102, 0.045);
+  }
+
+  .tab-button,
+  .file-tab {
+    max-width: 54vw;
+    padding: 8px 12px;
+    border: 1px solid rgba(67, 112, 103, 0.12);
+    color: #506d68;
+    background: rgba(255, 255, 255, 0.42);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .tab-button {
+    border-radius: 14px 14px 7px 7px;
+  }
+
+  .file-tab {
+    border-radius: 999px;
+  }
+
+  .tab-button.is-active {
+    color: #1f413d;
+    border-color: rgba(47, 113, 102, 0.2);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.88),
+      0 8px 18px rgba(48, 78, 73, 0.08);
+  }
+
+  .file-tab.is-active {
+    color: #f9fffd;
+    border-color: rgba(47, 113, 102, 0.14);
+    background:
+      linear-gradient(135deg, rgba(47, 113, 102, 0.98), rgba(67, 150, 134, 0.9));
+    box-shadow: 0 8px 18px rgba(47, 113, 102, 0.14);
+  }
+
+  .add-tab-button {
+    width: auto;
+    max-width: 72px;
+    padding: 8px 10px;
+    border: 1px solid rgba(47, 113, 102, 0.12);
+    color: #315c55;
+    background: rgba(255, 255, 255, 0.52);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  }
+}
