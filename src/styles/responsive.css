@@ -821,3 +821,46 @@
     opacity: 0.28 !important;
   }
 }
+
+
+/* Decision node mobile flowchart diamond fix */
+@media (max-width: 720px) {
+  .flow-area .route-node--split {
+    width: 214px !important;
+    min-width: 214px !important;
+    height: 112px !important;
+    min-height: 112px !important;
+    padding: 20px 48px !important;
+  }
+
+  .flow-area .route-node--split .route-node__top {
+    margin-bottom: 4px;
+  }
+
+  .flow-area .route-node--split .route-node__top span,
+  .flow-area .route-node--split .route-node__top em {
+    font-size: 0.62rem;
+  }
+
+  .flow-area .route-node--split strong {
+    font-size: 0.84rem;
+  }
+
+  .flow-area .route-node--split p {
+    display: none;
+  }
+
+  .flow-area .route-node--split .route-handle--target {
+    top: 50% !important;
+    right: auto !important;
+    left: 0 !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .flow-area .route-node--split .route-handle--source {
+    top: 50% !important;
+    right: 0 !important;
+    left: auto !important;
+    transform: translate(50%, -50%) !important;
+  }
+}
