@@ -434,32 +434,27 @@ function RouteEdge(props: EdgeProps) {
   const edgeLabel = edgeData?.memo
     ? `${edgeData.action} / ${edgeData.memo}`
     : edgeData?.action ?? String(label ?? '');
-  const isLightweight = edgeData?.lightweight === true;
 
   return (
     <>
       <path
         id={id}
         d={edgePath}
-        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''} ${isLightweight ? 'is-lightweight' : ''}`}
+        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''}`}
         markerEnd={markerEnd}
       />
 
-      {!isLightweight && (
-        <>
-          <circle r="4" className="route-particle">
-            <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
-          </circle>
+      <circle r="4" className="route-particle route-particle--main">
+        <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
+      </circle>
 
-          <circle r="3" className="route-particle route-particle--soft">
-            <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
-          </circle>
+      <circle r="3" className="route-particle route-particle--soft">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
+      </circle>
 
-          <circle r="3" className="route-particle route-particle--soft">
-            <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
-          </circle>
-        </>
-      )}
+      <circle r="3" className="route-particle route-particle--soft">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
+      </circle>
 
       <EdgeLabelRenderer>
         <div
@@ -679,6 +674,10 @@ function App() {
     [edges, selectedEdgeId],
   );
 
+  const selectedNodeIncomingCount = selectedNode
+    ? edges.filter((edge) => edge.target === selectedNode.id).length
+    : 0;
+
   const selectedNodeOutgoingCount = selectedNode
     ? edges.filter((edge) => edge.source === selectedNode.id).length
     : 0;
@@ -697,21 +696,7 @@ function App() {
     return buildRouteSummaries(activeFile);
   }, [activeFile, shouldBuildRouteSummaries]);
 
-  const displayedEdges = useMemo<FlowEdge[]>(() => {
-    if (!isMobile) {
-      return edges;
-    }
-
-    return edges.map((edge) => ({
-      ...edge,
-      data: {
-        action: edge.data?.action ?? '移動',
-        memo: edge.data?.memo ?? '',
-        ...edge.data,
-        lightweight: true,
-      },
-    }));
-  }, [edges, isMobile]);
+  const displayedEdges = useMemo<FlowEdge[]>(() => edges, [edges]);
 
   const securityWarnings = useMemo(() => {
     const values = deferredTasks.flatMap((task) => [
@@ -1014,7 +999,7 @@ function App() {
     }
 
     if (!canCreateOutgoingFrom(sourceId)) {
-      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数入力はそのまま集められます。複数出力に分ける場合は「分岐」を使ってください。');
       return;
     }
 
@@ -1060,6 +1045,43 @@ function App() {
     setSelectedEdgeId(null);
     setEditModalOpen(true);
     setConnectMode(null);
+  };
+
+  const addInputSourceToSelectedNode = () => {
+    if (!selectedNode || selectedNode.data.kind === 'source') {
+      return;
+    }
+
+    const sourceCount = nodes.filter((node) => node.data.kind === 'source').length;
+    const incomingCount = edges.filter((edge) => edge.target === selectedNode.id).length;
+    const nextSourceSuffix = sourceCount < 26 ? String.fromCharCode(65 + sourceCount) : String(sourceCount + 1);
+
+    const newNode: FlowNode = {
+      id: createId('node-source'),
+      type: 'routeCard',
+      position: {
+        x: selectedNode.position.x - 260,
+        y: selectedNode.position.y - 90 + incomingCount * 120,
+      },
+      data: {
+        label: `取得元${nextSourceSuffix}`,
+        kind: 'source',
+        action: '取得',
+        memo: 'このパーツへ流れてくる別ファイル・別取得元。実名は入れない。',
+      },
+    };
+
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: [...file.nodes, newNode],
+      edges: [...file.edges, createEdge(newNode.id, selectedNode.id, '取得')],
+    }));
+
+    setSelectedNodeId(newNode.id);
+    setSelectedEdgeId(null);
+    setEditModalOpen(true);
+    setConnectMode(null);
+    setStatusMessage('選択中のパーツへ流れ込む取得元を追加しました。複数入力は分岐なしで扱えます。');
   };
 
   const updateNodeData = (nodeId: string, patch: Partial<FlowNodeData>) => {
@@ -1109,7 +1131,7 @@ function App() {
     }
 
     if (!canCreateOutgoingFrom(sourceId)) {
-      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数入力はそのまま集められます。複数出力に分ける場合は「分岐」を使ってください。');
       setConnectMode(null);
       return;
     }
@@ -1437,6 +1459,7 @@ function App() {
         <div className="selected-card">
           <span>{NODE_KIND_LABELS[selectedNode.data.kind]}</span>
           <strong>{selectedNode.data.label}</strong>
+          <small>入力 {selectedNodeIncomingCount}本 / 出力 {selectedNodeOutgoingCount}本</small>
         </div>
 
         <label>
@@ -1511,13 +1534,19 @@ function App() {
             次につなぐ
           </button>
 
+          {selectedNode.data.kind !== 'source' && (
+            <button className="secondary-inline-button" onClick={addInputSourceToSelectedNode}>
+              入力元を追加
+            </button>
+          )}
+
           <button className="danger-inline-button" onClick={removeSelected}>
             このパーツを削除
           </button>
 
           {!selectedNodeCanStartRoute && (
             <p className="route-rule-message">
-              このパーツはすでに次の導線があります。複数ルートにしたい場合は「分岐」パーツを使ってください。
+              このパーツはすでに次の導線があります。複数入力はOKですが、複数出力に分ける場合は「分岐」パーツを使ってください。
             </p>
           )}
         </div>
@@ -1942,7 +1971,7 @@ function App() {
             <div>
               <strong>Route Canvas</strong>
               <span>
-                通常パーツは導線1本。複数ルートは「分岐」パーツから作成。
+                複数入力OK。通常パーツの出力は1本まで。複数出力は「分岐」から作成。
               </span>
             </div>
 

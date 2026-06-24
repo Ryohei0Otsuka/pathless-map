@@ -1027,6 +1027,12 @@ button:disabled {
   color: #243b38;
 }
 
+.selected-card small {
+  color: #6d7f7b;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
 .edit-form label,
 .storage-box label,
 .insert-box label,
@@ -1052,6 +1058,12 @@ button:disabled {
 .node-actions button {
   color: #f8fffc;
   background: #2f7166;
+}
+
+.node-actions .secondary-inline-button {
+  border: 1px solid rgba(47, 113, 102, 0.18);
+  color: #2f514b;
+  background: #e6f7f1;
 }
 
 .node-actions .danger-inline-button {
@@ -1801,13 +1813,18 @@ button:disabled {
 
   .route-edge-path,
   .route-edge-path.is-lightweight {
-    stroke-dasharray: none !important;
-    animation: none !important;
+    stroke-dasharray: 9 12 !important;
+    animation: route-flow 1.55s linear infinite !important;
     filter: none !important;
   }
 
   .route-particle {
-    display: none !important;
+    display: inline !important;
+    filter: drop-shadow(0 0 4px rgba(53, 212, 135, 0.48));
+  }
+
+  .route-particle--soft {
+    opacity: 0.42;
   }
 
   .route-edge-label {
@@ -2073,5 +2090,62 @@ button:disabled {
 
   .delete-button-label {
     display: none;
+  }
+}
+
+/* === Final SP route flow animation restore ===
+   緑の血流のような導線アニメーションはPathless Mapの体験として残す。
+   軽量化はMiniMap/Background/blur/不要計算で行い、導線の動きは消さない。 */
+.route-edge-path {
+  stroke-dasharray: 10 12;
+  animation: route-flow 1.1s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(47, 113, 102, 0.18));
+}
+
+.route-particle,
+.route-particle--main,
+.route-particle--soft {
+  display: inline !important;
+}
+
+@media (max-width: 720px) {
+  .route-edge-path,
+  .route-edge-path.is-lightweight {
+    stroke-dasharray: 9 12 !important;
+    animation: route-flow 1.35s linear infinite !important;
+    filter: drop-shadow(0 0 2px rgba(47, 113, 102, 0.14)) !important;
+  }
+
+  .route-particle,
+  .route-particle--main {
+    display: inline !important;
+    opacity: 0.9 !important;
+    filter:
+      drop-shadow(0 0 3px rgba(53, 212, 135, 0.72))
+      drop-shadow(0 0 7px rgba(53, 212, 135, 0.26)) !important;
+  }
+
+  .route-particle--soft {
+    display: inline !important;
+    opacity: 0.52 !important;
+    filter: drop-shadow(0 0 3px rgba(110, 231, 173, 0.48)) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-edge-path,
+  .route-edge-path.is-lightweight {
+    animation: route-flow 2.8s linear infinite !important;
+  }
+
+  .route-particle,
+  .route-particle--main {
+    display: inline !important;
+    opacity: 0.58 !important;
+  }
+
+  .route-particle--soft {
+    display: inline !important;
+    opacity: 0.28 !important;
   }
 }
