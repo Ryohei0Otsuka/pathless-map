@@ -1716,9 +1716,14 @@ function App() {
             ))}
           </div>
 
-          <button className="add-tab-button" onClick={addTask}>
-            ＋タスク
-          </button>
+          <div className="control-line-actions">
+            <button className="add-tab-button" onClick={addTask}>
+              ＋タスク
+            </button>
+            <button className="mobile-control-delete-button" onClick={removeActiveTask}>
+              削除
+            </button>
+          </div>
         </div>
 
         <div className="control-detail-row control-detail-row--task">
@@ -1765,9 +1770,14 @@ function App() {
             ))}
           </div>
 
-          <button className="add-tab-button" onClick={addFile}>
-            ＋ファイル
-          </button>
+          <div className="control-line-actions">
+            <button className="add-tab-button" onClick={addFile}>
+              ＋ファイル
+            </button>
+            <button className="mobile-control-delete-button" onClick={removeActiveFile}>
+              削除
+            </button>
+          </div>
         </div>
 
         <div className="control-detail-row control-detail-row--file">
