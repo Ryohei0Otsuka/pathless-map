@@ -690,28 +690,43 @@ function App() {
   const hasSecurityWarnings = securityWarnings.length > 0;
 
   const openEditModalAt = (event?: { clientX: number; clientY: number }) => {
+    const viewport = window.visualViewport;
+    const viewportLeft = viewport?.offsetLeft ?? 0;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportWidth = viewport?.width ?? window.innerWidth;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
+    const isMobile = window.matchMedia('(max-width: 720px)').matches;
+
+    if (isMobile) {
+      const margin = 10;
+      const width = Math.min(360, Math.max(280, viewportWidth - margin * 2));
+      const maxHeight = Math.max(320, viewportHeight - margin * 2);
+      const left = viewportLeft + Math.max(margin, (viewportWidth - width) / 2);
+      const top = viewportTop + margin;
+
+      setEditModalAnchor({
+        x: left,
+        y: top,
+        width,
+        maxHeight,
+        placement: 'below',
+      });
+      setEditModalOpen(true);
+      return;
+    }
+
     if (!event) {
       setEditModalAnchor(null);
       setEditModalOpen(true);
       return;
     }
 
-    const margin = 12;
+    const margin = 14;
     const gap = 12;
-    const isMobile = window.matchMedia('(max-width: 720px)').matches;
-    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const width = Math.min(480, Math.max(300, viewportWidth - margin * 2));
+    const maxHeight = Math.min(560, Math.max(320, viewportHeight - margin * 2));
 
-    const width = Math.min(
-      isMobile ? 340 : 480,
-      Math.max(260, viewportWidth - margin * 2),
-    );
-    const maxHeight = Math.min(
-      isMobile ? 620 : 520,
-      Math.max(260, viewportHeight - margin * 2),
-    );
-
-    const left = Math.min(
+    const left = viewportLeft + Math.min(
       Math.max(event.clientX - width / 2, margin),
       Math.max(margin, viewportWidth - width - margin),
     );
@@ -721,7 +736,7 @@ function App() {
     const preferredTop = canShowAbove
       ? event.clientY - maxHeight - gap
       : event.clientY + gap;
-    const top = Math.min(
+    const top = viewportTop + Math.min(
       Math.max(preferredTop, margin),
       Math.max(margin, viewportHeight - maxHeight - margin),
     );
