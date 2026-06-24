@@ -22,16 +22,14 @@ import {
   type NodeProps,
   type NodeTypes,
   type OnConnect,
-  type ReactFlowInstance,
 } from '@xyflow/react';
-import './styles/index.css';
+import './App.css';
 
 type NodeKind =
   | 'source'
   | 'device'
   | 'operation'
   | 'tool'
-  | 'output'
   | 'folder'
   | 'split'
   | 'service'
@@ -46,7 +44,6 @@ type ActionKind =
   | '加工'
   | 'リネーム'
   | 'ツール使用'
-  | '出力'
   | 'フォルダ作成'
   | '分岐'
   | '格納'
@@ -120,7 +117,6 @@ const ACTIONS: ActionKind[] = [
   '加工',
   'リネーム',
   'ツール使用',
-  '出力',
   'フォルダ作成',
   '分岐',
   '格納',
@@ -137,7 +133,6 @@ const ROUTE_LABELS = [
   '加工',
   'リネーム',
   'ツール使用',
-  '出力',
   'フォルダ作成',
   '分岐',
   'ルートA',
@@ -170,7 +165,6 @@ const NODE_KIND_LABELS: Record<NodeKind, string> = {
   device: '端末・場所',
   operation: '工程',
   tool: 'ツール',
-  output: '出力物',
   folder: 'フォルダ作成',
   split: '分岐',
   service: '一般サービス',
@@ -206,13 +200,6 @@ const NODE_TEMPLATES: NodeTemplate[] = [
     action: 'ツール使用',
     description: 'ツールAで処理する',
     icon: 'TL',
-  },
-  {
-    kind: 'output',
-    title: '出力物',
-    action: '出力',
-    description: '工程やツール使用の結果としてできる抽象ファイル',
-    icon: 'GEN',
   },
   {
     kind: 'folder',
@@ -279,7 +266,6 @@ function createStarterFile(label: string): FileRoute {
   const deviceId = `${prefix}-device`;
   const operationId = `${prefix}-operation`;
   const toolId = `${prefix}-tool`;
-  const outputId = `${prefix}-output`;
   const folderId = `${prefix}-folder`;
   const serviceId = `${prefix}-service`;
   const storageId = `${prefix}-storage`;
@@ -333,20 +319,9 @@ function createStarterFile(label: string): FileRoute {
         },
       },
       {
-        id: outputId,
-        type: 'routeCard',
-        position: { x: 1020, y: 100 },
-        data: {
-          label: '出力物A',
-          kind: 'output',
-          action: '出力',
-          memo: '工程やツール使用の結果としてできる抽象ファイル。実ファイル名は入れない。',
-        },
-      },
-      {
         id: folderId,
         type: 'routeCard',
-        position: { x: 1270, y: 100 },
+        position: { x: 1020, y: 100 },
         data: {
           label: 'フォルダ作成A',
           kind: 'folder',
@@ -357,7 +332,7 @@ function createStarterFile(label: string): FileRoute {
       {
         id: serviceId,
         type: 'routeCard',
-        position: { x: 1520, y: 100 },
+        position: { x: 1270, y: 100 },
         data: {
           label: '一般サービスA',
           kind: 'service',
@@ -368,7 +343,7 @@ function createStarterFile(label: string): FileRoute {
       {
         id: storageId,
         type: 'routeCard',
-        position: { x: 1770, y: 100 },
+        position: { x: 1520, y: 100 },
         data: {
           label: '格納先Y',
           kind: 'storage',
@@ -381,9 +356,8 @@ function createStarterFile(label: string): FileRoute {
       createEdge(sourceId, deviceId, '取得'),
       createEdge(deviceId, operationId, '移動'),
       createEdge(operationId, toolId, '加工'),
-      createEdge(toolId, outputId, '出力'),
-      createEdge(outputId, folderId, 'フォルダ作成'),
-      createEdge(folderId, serviceId, '移動'),
+      createEdge(toolId, folderId, 'ツール使用'),
+      createEdge(folderId, serviceId, 'フォルダ作成'),
       createEdge(serviceId, storageId, '格納'),
     ],
   };
@@ -460,27 +434,32 @@ function RouteEdge(props: EdgeProps) {
   const edgeLabel = edgeData?.memo
     ? `${edgeData.action} / ${edgeData.memo}`
     : edgeData?.action ?? String(label ?? '');
+  const isLightweight = edgeData?.lightweight === true;
 
   return (
     <>
       <path
         id={id}
         d={edgePath}
-        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''}`}
+        className={`react-flow__edge-path route-edge-path ${selected ? 'is-selected' : ''} ${isLightweight ? 'is-lightweight' : ''}`}
         markerEnd={markerEnd}
       />
 
-      <circle r="4" className="route-particle route-particle--main">
-        <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
-      </circle>
+      {!isLightweight && (
+        <>
+          <circle r="4" className="route-particle">
+            <animateMotion dur="2.2s" repeatCount="indefinite" path={edgePath} />
+          </circle>
 
-      <circle r="3" className="route-particle route-particle--soft">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
-      </circle>
+          <circle r="3" className="route-particle route-particle--soft">
+            <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.72s" path={edgePath} />
+          </circle>
 
-      <circle r="3" className="route-particle route-particle--soft">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
-      </circle>
+          <circle r="3" className="route-particle route-particle--soft">
+            <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.44s" path={edgePath} />
+          </circle>
+        </>
+      )}
 
       <EdgeLabelRenderer>
         <div
@@ -554,21 +533,6 @@ function scanSensitiveText(values: string[]): string[] {
   });
 
   return Array.from(new Set(warnings));
-}
-
-function isEditableKeyboardTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  const tagName = target.tagName.toLowerCase();
-
-  return (
-    tagName === 'input' ||
-    tagName === 'textarea' ||
-    tagName === 'select' ||
-    target.isContentEditable
-  );
 }
 
 function buildRouteSummaries(file: FileRoute): string[] {
@@ -664,11 +628,11 @@ function App() {
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [saveMode, setSaveMode] = useState<SaveMode>('off');
   const flowCardRef = useRef<HTMLElement | null>(null);
-  const flowInstanceRef = useRef<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editModalAnchor, setEditModalAnchor] = useState<EditModalAnchor | null>(null);
   const [connectMode, setConnectMode] = useState<ConnectMode | null>(null);
+  const [insertKind, setInsertKind] = useState<NodeKind>('operation');
   const [statusMessage, setStatusMessage] = useState(
     '保存OFF：この画面の内容は自動保存されません。',
   );
@@ -715,19 +679,13 @@ function App() {
     [edges, selectedEdgeId],
   );
 
-  const selectedNodeIncomingCount = selectedNode
-    ? edges.filter((edge) => edge.target === selectedNode.id).length
-    : 0;
-
   const selectedNodeOutgoingCount = selectedNode
     ? edges.filter((edge) => edge.source === selectedNode.id).length
     : 0;
 
   const selectedNodeCanStartRoute =
     !!selectedNode &&
-    (selectedNode.data.kind === 'source' ||
-      selectedNode.data.kind === 'split' ||
-      selectedNodeOutgoingCount === 0);
+    (selectedNode.data.kind === 'split' || selectedNodeOutgoingCount === 0);
 
   const shouldBuildRouteSummaries = !isMobile || mobileRouteSummaryOpen;
 
@@ -739,7 +697,21 @@ function App() {
     return buildRouteSummaries(activeFile);
   }, [activeFile, shouldBuildRouteSummaries]);
 
-  const displayedEdges = useMemo<FlowEdge[]>(() => edges, [edges]);
+  const displayedEdges = useMemo<FlowEdge[]>(() => {
+    if (!isMobile) {
+      return edges;
+    }
+
+    return edges.map((edge) => ({
+      ...edge,
+      data: {
+        action: edge.data?.action ?? '移動',
+        memo: edge.data?.memo ?? '',
+        ...edge.data,
+        lightweight: true,
+      },
+    }));
+  }, [edges, isMobile]);
 
   const securityWarnings = useMemo(() => {
     const values = deferredTasks.flatMap((task) => [
@@ -823,7 +795,7 @@ function App() {
       return false;
     }
 
-    if (sourceNode.data.kind === 'source' || sourceNode.data.kind === 'split') {
+    if (sourceNode.data.kind === 'split') {
       return true;
     }
 
@@ -1042,7 +1014,7 @@ function App() {
     }
 
     if (!canCreateOutgoingFrom(sourceId)) {
-      setStatusMessage('通常パーツから出せる導線は1本までです。複数入力はそのまま集められます。複数出力に分ける場合は「取得元」または「分岐」を使ってください。');
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
       return;
     }
 
@@ -1063,35 +1035,14 @@ function App() {
     setStatusMessage('導線を追加しました。');
   };
 
-  const getVisibleCanvasPosition = () => {
-    const flowArea = flowCardRef.current?.querySelector('.flow-area');
-    const rect = flowArea instanceof HTMLElement ? flowArea.getBoundingClientRect() : null;
-    const offsetIndex = nodes.length % 9;
-    const offsetX = (offsetIndex % 3 - 1) * 48;
-    const offsetY = (Math.floor(offsetIndex / 3) - 1) * 44;
-
-    const screenPoint = {
-      x: (rect ? rect.left + rect.width / 2 : window.innerWidth / 2) + offsetX,
-      y: (rect ? rect.top + rect.height * 0.42 : window.innerHeight / 2) + offsetY,
-    };
-
-    const flowPoint = flowInstanceRef.current?.screenToFlowPosition(screenPoint);
-
-    if (flowPoint) {
-      return flowPoint;
-    }
-
-    return {
-      x: 90 + nodes.length * 34,
-      y: 170 + nodes.length * 28,
-    };
-  };
-
   const addNode = (template: NodeTemplate) => {
     const newNode: FlowNode = {
       id: createId(`node-${template.kind}`),
       type: 'routeCard',
-      position: getVisibleCanvasPosition(),
+      position: {
+        x: 90 + nodes.length * 34,
+        y: 170 + nodes.length * 28,
+      },
       data: {
         label: template.title,
         kind: template.kind,
@@ -1109,43 +1060,6 @@ function App() {
     setSelectedEdgeId(null);
     setEditModalOpen(true);
     setConnectMode(null);
-  };
-
-  const addInputSourceToSelectedNode = () => {
-    if (!selectedNode || selectedNode.data.kind === 'source') {
-      return;
-    }
-
-    const sourceCount = nodes.filter((node) => node.data.kind === 'source').length;
-    const incomingCount = edges.filter((edge) => edge.target === selectedNode.id).length;
-    const nextSourceSuffix = sourceCount < 26 ? String.fromCharCode(65 + sourceCount) : String(sourceCount + 1);
-
-    const newNode: FlowNode = {
-      id: createId('node-source'),
-      type: 'routeCard',
-      position: {
-        x: selectedNode.position.x - 260,
-        y: selectedNode.position.y - 90 + incomingCount * 120,
-      },
-      data: {
-        label: `取得元${nextSourceSuffix}`,
-        kind: 'source',
-        action: '取得',
-        memo: 'このパーツへ流れてくる別ファイル・別取得元。実名は入れない。',
-      },
-    };
-
-    updateActiveFile((file) => ({
-      ...file,
-      nodes: [...file.nodes, newNode],
-      edges: [...file.edges, createEdge(newNode.id, selectedNode.id, '取得')],
-    }));
-
-    setSelectedNodeId(newNode.id);
-    setSelectedEdgeId(null);
-    setEditModalOpen(true);
-    setConnectMode(null);
-    setStatusMessage('選択中のパーツへ流れ込む取得元を追加しました。複数入力は分岐なしで扱えます。');
   };
 
   const updateNodeData = (nodeId: string, patch: Partial<FlowNodeData>) => {
@@ -1195,7 +1109,7 @@ function App() {
     }
 
     if (!canCreateOutgoingFrom(sourceId)) {
-      setStatusMessage('通常パーツから出せる導線は1本までです。複数入力はそのまま集められます。複数出力に分ける場合は「取得元」または「分岐」を使ってください。');
+      setStatusMessage('通常パーツから出せる導線は1本までです。複数ルートにしたい場合は「分岐」を使ってください。');
       setConnectMode(null);
       return;
     }
@@ -1323,6 +1237,60 @@ function App() {
     setStatusMessage(`分岐から「${routeLabel}」を追加しました。`);
   };
 
+  const insertNodeOnSelectedEdge = () => {
+    if (!selectedEdge) {
+      return;
+    }
+
+    const template = NODE_TEMPLATES.find((item) => item.kind === insertKind) ?? NODE_TEMPLATES[2];
+    const sourceNode = nodes.find((node) => node.id === selectedEdge.source);
+    const targetNode = nodes.find((node) => node.id === selectedEdge.target);
+
+    if (!sourceNode || !targetNode) {
+      setStatusMessage('挿入先の導線を取得できませんでした。');
+      return;
+    }
+
+    const newNode: FlowNode = {
+      id: createId(`node-${template.kind}`),
+      type: 'routeCard',
+      position: {
+        x: (sourceNode.position.x + targetNode.position.x) / 2,
+        y: (sourceNode.position.y + targetNode.position.y) / 2 + 70,
+      },
+      data: {
+        label: template.title,
+        kind: template.kind,
+        action: template.action,
+        memo: template.description,
+      },
+    };
+
+    const firstEdge = createEdge(
+      selectedEdge.source,
+      newNode.id,
+      selectedEdge.data?.action ?? '移動',
+      selectedEdge.data?.memo ?? '',
+    );
+    const secondEdge = createEdge(newNode.id, selectedEdge.target, template.action);
+
+    updateActiveFile((file) => ({
+      ...file,
+      nodes: [...file.nodes, newNode],
+      edges: [
+        ...file.edges.filter((edge) => edge.id !== selectedEdge.id),
+        firstEdge,
+        secondEdge,
+      ],
+    }));
+
+    setSelectedNodeId(newNode.id);
+    setSelectedEdgeId(null);
+    setEditModalOpen(true);
+    setConnectMode(null);
+    setStatusMessage('導線の間にパーツを挿入しました。');
+  };
+
   const removeSelected = () => {
     if (selectedNodeId) {
       updateActiveFile((file) => ({
@@ -1337,7 +1305,6 @@ function App() {
       setSelectedEdgeId(null);
       setEditModalOpen(false);
       setConnectMode(null);
-      setStatusMessage('選択中のパーツを削除しました。');
       return;
     }
 
@@ -1350,63 +1317,8 @@ function App() {
       setSelectedEdgeId(null);
       setEditModalOpen(false);
       setConnectMode(null);
-      setStatusMessage('選択中の導線を削除しました。');
     }
   };
-
-  const clearActiveFileRoute = () => {
-    if (nodes.length === 0 && edges.length === 0) {
-      setStatusMessage('このファイル導線はすでに空です。');
-      return;
-    }
-
-    const ok = window.confirm(
-      '現在のファイル導線内のパーツと導線をすべて削除します。タスク名・ファイル導線名・保存データは残ります。',
-    );
-
-    if (!ok) {
-      return;
-    }
-
-    updateActiveFile((file) => ({
-      ...file,
-      nodes: [],
-      edges: [],
-    }));
-
-    setSelectedNodeId(null);
-    setSelectedEdgeId(null);
-    setEditModalOpen(false);
-    setConnectMode(null);
-    setStatusMessage('現在のファイル導線を空にしました。');
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isDeleteKey = event.key === 'Delete' || event.key === 'Backspace';
-
-      if (!isDeleteKey) {
-        return;
-      }
-
-      if (!selectedNodeId && !selectedEdgeId) {
-        return;
-      }
-
-      if (isEditableKeyboardTarget(event.target)) {
-        return;
-      }
-
-      event.preventDefault();
-      removeSelected();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [removeSelected, selectedEdgeId, selectedNodeId]);
 
   const saveDraft = () => {
     if (saveMode === 'off') {
@@ -1525,7 +1437,6 @@ function App() {
         <div className="selected-card">
           <span>{NODE_KIND_LABELS[selectedNode.data.kind]}</span>
           <strong>{selectedNode.data.label}</strong>
-          <small>入力 {selectedNodeIncomingCount}本 / 出力 {selectedNodeOutgoingCount}本</small>
         </div>
 
         <label>
@@ -1537,7 +1448,7 @@ function App() {
                 label: event.target.value,
               })
             }
-            placeholder="例：端末A / 出力物A / フォルダ作成A / 格納先Y"
+            placeholder="例：端末A / フォルダ作成A / 一般サービスA / 格納先Y"
           />
         </label>
 
@@ -1600,19 +1511,13 @@ function App() {
             次につなぐ
           </button>
 
-          {selectedNode.data.kind !== 'source' && (
-            <button className="secondary-inline-button" onClick={addInputSourceToSelectedNode}>
-              入力元を追加
-            </button>
-          )}
-
           <button className="danger-inline-button" onClick={removeSelected}>
             このパーツを削除
           </button>
 
           {!selectedNodeCanStartRoute && (
             <p className="route-rule-message">
-              このパーツはすでに次の導線があります。複数入力はOKですが、複数出力に分ける場合は「取得元」または「分岐」パーツを使ってください。
+              このパーツはすでに次の導線があります。複数ルートにしたい場合は「分岐」パーツを使ってください。
             </p>
           )}
         </div>
@@ -1674,6 +1579,26 @@ function App() {
             placeholder="例：経由する / 戻す / 別ルートへ"
           />
         </label>
+
+        <div className="insert-box">
+          <p>この導線の間にパーツを挿入</p>
+          <label>
+            挿入するパーツ
+            <select
+              value={insertKind}
+              onChange={(event) => setInsertKind(event.target.value as NodeKind)}
+            >
+              {NODE_TEMPLATES.filter((template) => template.kind !== 'source').map(
+                (template) => (
+                  <option key={template.kind} value={template.kind}>
+                    {template.title}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+          <button onClick={insertNodeOnSelectedEdge}>導線の間に挿入</button>
+        </div>
 
         <div className="node-actions">
           <button className="danger-inline-button" onClick={removeSelected}>
@@ -2017,7 +1942,7 @@ function App() {
             <div>
               <strong>Route Canvas</strong>
               <span>
-                複数入力OK。通常パーツの出力は1本まで。複数出力は「取得元」または「分岐」から作成。
+                通常パーツは導線1本。複数ルートは「分岐」パーツから作成。
               </span>
             </div>
 
@@ -2026,18 +1951,8 @@ function App() {
                 className="danger-ghost-button"
                 onClick={removeSelected}
                 disabled={!selectedNodeId && !selectedEdgeId}
-                title="Deleteキー / Backspaceキーでも削除できます"
               >
                 選択中を削除
-              </button>
-
-              <button
-                className="danger-ghost-button"
-                onClick={clearActiveFileRoute}
-                disabled={nodes.length === 0 && edges.length === 0}
-                title="現在のファイル導線だけを空にします"
-              >
-                導線を全削除
               </button>
             </div>
           </div>
@@ -2078,9 +1993,6 @@ function App() {
               zoomOnDoubleClick={false}
               preventScrolling
               selectionOnDrag={false}
-              onInit={(instance) => {
-                flowInstanceRef.current = instance;
-              }}
               fitView
             >
               {!isMobile && <Background color="#bfd5cf" gap={24} />}
