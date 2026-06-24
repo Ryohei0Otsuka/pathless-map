@@ -1720,8 +1720,14 @@ function App() {
             <button className="add-tab-button" onClick={addTask}>
               ＋タスク
             </button>
-            <button className="mobile-control-delete-button" onClick={removeActiveTask}>
-              削除
+            <button
+              className="mobile-control-delete-button mobile-control-delete-button--task"
+              onClick={removeActiveTask}
+              aria-label="現在のタスクを削除"
+              title="現在のタスクを削除"
+            >
+              <span className="delete-button-mark" aria-hidden="true">×</span>
+              <span className="delete-button-label">Task</span>
             </button>
           </div>
         </div>
@@ -1774,8 +1780,14 @@ function App() {
             <button className="add-tab-button" onClick={addFile}>
               ＋ファイル
             </button>
-            <button className="mobile-control-delete-button" onClick={removeActiveFile}>
-              削除
+            <button
+              className="mobile-control-delete-button mobile-control-delete-button--file"
+              onClick={removeActiveFile}
+              aria-label="現在のファイル導線を削除"
+              title="現在のファイル導線を削除"
+            >
+              <span className="delete-button-mark" aria-hidden="true">×</span>
+              <span className="delete-button-label">File</span>
             </button>
           </div>
         </div>

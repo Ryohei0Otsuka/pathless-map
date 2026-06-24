@@ -3095,3 +3095,129 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* === Polished mobile danger controls ===
+   SP版は詳細行を畳むため、追加/削除を同じ操作列に置く。
+   ただし削除は粗い赤ボタンではなく、ノートブック上の小さな危険チップとして扱う。 */
+.control-line-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.mobile-control-delete-button {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(173, 84, 59, 0.2);
+  border-radius: 999px;
+  padding: 8px 10px 8px 7px;
+  color: #7f3b31;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 247, 0.72), rgba(255, 230, 220, 0.56));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 8px 18px rgba(125, 62, 45, 0.08);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.mobile-control-delete-button:hover:not(:disabled),
+.mobile-control-delete-button:focus-visible {
+  border-color: rgba(173, 84, 59, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 246, 242, 0.92), rgba(255, 215, 199, 0.78));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 10px 24px rgba(125, 62, 45, 0.14);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.mobile-control-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.delete-button-mark {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff8f4;
+  background: rgba(164, 71, 48, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 4px 10px rgba(164, 71, 48, 0.18);
+  font-size: 0.86rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.delete-button-label {
+  display: inline-block;
+  transform: translateY(0.5px);
+}
+
+@media (max-width: 720px) {
+  .control-line,
+  .control-line--task,
+  .control-line--file {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center;
+  }
+
+  .control-line-actions {
+    gap: 6px;
+  }
+
+  .control-line-actions .add-tab-button {
+    max-width: none;
+    padding: 8px 10px;
+    font-size: 0.72rem;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 8px 18px rgba(42, 91, 82, 0.08);
+  }
+
+  .mobile-control-delete-button {
+    display: inline-flex;
+  }
+
+  .control-detail-row,
+  .control-detail-row--task,
+  .control-detail-row--file {
+    display: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .control-line-actions {
+    gap: 5px;
+  }
+
+  .control-line-actions .add-tab-button {
+    padding: 8px 9px;
+  }
+
+  .mobile-control-delete-button {
+    padding: 8px 8px 8px 6px;
+  }
+
+  .delete-button-label {
+    display: none;
+  }
+}
