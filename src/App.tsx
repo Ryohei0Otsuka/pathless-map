@@ -48,6 +48,7 @@ type ActionKind =
   | 'ツール使用'
   | '出力'
   | 'フォルダ作成'
+  | '判断'
   | '分岐'
   | '格納'
   | '戻し'
@@ -122,7 +123,7 @@ const ACTIONS: ActionKind[] = [
   'ツール使用',
   '出力',
   'フォルダ作成',
-  '分岐',
+  '判断',
   '格納',
   '戻し',
   '保留',
@@ -139,7 +140,12 @@ const ROUTE_LABELS = [
   'ツール使用',
   '出力',
   'フォルダ作成',
-  '分岐',
+  '判断',
+  'OK',
+  'NG',
+  '要確認',
+  '通常',
+  '例外',
   'ルートA',
   'ルートB',
   '格納先A',
@@ -153,14 +159,14 @@ const ROUTE_LABELS = [
 ];
 
 const SPLIT_ROUTE_LABELS = [
-  'ルートA',
-  'ルートB',
-  '格納先A',
-  '格納先B',
-  '別ファイル生成',
-  '再加工',
+  'OK',
+  'NG',
+  '要確認',
+  '通常',
+  '例外',
   '戻し',
   '保留',
+  '格納先A',
 ] as const;
 
 type SplitRouteLabel = (typeof SPLIT_ROUTE_LABELS)[number];
@@ -172,7 +178,7 @@ const NODE_KIND_LABELS: Record<NodeKind, string> = {
   tool: 'ツール',
   output: '出力物',
   folder: 'フォルダ作成',
-  split: '分岐',
+  split: '判断',
   service: '一般サービス',
   storage: '格納先',
   memo: 'メモ',
@@ -223,10 +229,10 @@ const NODE_TEMPLATES: NodeTemplate[] = [
   },
   {
     kind: 'split',
-    title: '分岐',
-    action: '分岐',
-    description: 'ルートが分かれる地点',
-    icon: 'Y',
+    title: '判断',
+    action: '判断',
+    description: '条件や確認結果で流れが変わる地点',
+    icon: 'IF',
   },
   {
     kind: 'service',
@@ -417,10 +423,10 @@ function RouteNode(props: NodeProps<FlowNode>) {
       <strong>{data.label}</strong>
 
       {data.kind === 'split' && (
-        <div className="split-preview" aria-label="分岐ルート">
-          <span>ルートA</span>
-          <span>格納先B</span>
-          <span>戻し</span>
+        <div className="split-preview" aria-label="判断ルート">
+          <span>OK</span>
+          <span>NG</span>
+          <span>要確認</span>
         </div>
       )}
 
@@ -723,11 +729,7 @@ function App() {
     ? edges.filter((edge) => edge.source === selectedNode.id).length
     : 0;
 
-  const selectedNodeCanStartRoute =
-    !!selectedNode &&
-    (selectedNode.data.kind === 'source' ||
-      selectedNode.data.kind === 'split' ||
-      selectedNodeOutgoingCount === 0);
+  const selectedNodeCanStartRoute = !!selectedNode;
 
   const shouldBuildRouteSummaries = !isMobile || mobileRouteSummaryOpen;
 
@@ -817,18 +819,7 @@ function App() {
   };
 
   const canCreateOutgoingFrom = (sourceId: string) => {
-    const sourceNode = nodes.find((node) => node.id === sourceId);
-
-    if (!sourceNode) {
-      return false;
-    }
-
-    if (sourceNode.data.kind === 'source' || sourceNode.data.kind === 'split') {
-      return true;
-    }
-
-    const outgoingCount = edges.filter((edge) => edge.source === sourceId).length;
-    return outgoingCount === 0;
+    return nodes.some((node) => node.id === sourceId);
   };
 
   const updateActiveTask = (patch: Partial<TaskMap>) => {
@@ -1042,7 +1033,7 @@ function App() {
     }
 
     if (!canCreateOutgoingFrom(sourceId)) {
-      setStatusMessage('このパーツから出せる導線は1本までです。途中で流れを分ける場合は「分岐」を使ってください。取得元は複数の行き先へ接続できます。');
+      setStatusMessage('このパーツから導線を作成できませんでした。接続元を選び直してください。');
       return;
     }
 
@@ -1195,7 +1186,7 @@ function App() {
     }
 
     if (!canCreateOutgoingFrom(sourceId)) {
-      setStatusMessage('このパーツから出せる導線は1本までです。途中で流れを分ける場合は「分岐」を使ってください。取得元は複数の行き先へ接続できます。');
+      setStatusMessage('このパーツから導線を作成できませんでした。接続元を選び直してください。');
       setConnectMode(null);
       return;
     }
@@ -1228,7 +1219,7 @@ function App() {
     }
 
     if (selectedNode.data.kind !== 'split') {
-      setStatusMessage('複数ルートを作る場合は「分岐」パーツを選んでください。');
+      setStatusMessage('条件や確認結果で流れを分ける場合は「判断」パーツを選んでください。');
       return;
     }
 
@@ -1243,41 +1234,35 @@ function App() {
         memo: string;
       }
     > = {
-      ルートA: {
+      OK: {
         kind: 'operation',
         action: '加工',
-        label: '別工程A',
-        memo: '分岐後に進む別ルート。',
+        label: '通常処理',
+        memo: '条件を満たした場合に進む流れ。',
       },
-      ルートB: {
+      NG: {
+        kind: 'memo',
+        action: '保留',
+        label: '確認・例外',
+        memo: '条件を満たさない場合や例外時の流れ。',
+      },
+      要確認: {
+        kind: 'memo',
+        action: '保留',
+        label: '要確認',
+        memo: '確認が必要な場合に一時停止する流れ。',
+      },
+      通常: {
         kind: 'operation',
         action: '加工',
-        label: '別工程B',
-        memo: '分岐後に進む別ルート。',
+        label: '通常ルート',
+        memo: '通常時に進む流れ。',
       },
-      格納先A: {
-        kind: 'storage',
-        action: '格納',
-        label: '格納先A',
-        memo: '分岐後の格納先。',
-      },
-      格納先B: {
-        kind: 'storage',
-        action: '格納',
-        label: '格納先B',
-        memo: '分岐後の別格納先。',
-      },
-      別ファイル生成: {
-        kind: 'operation',
-        action: '加工',
-        label: '別ファイル生成',
-        memo: '加工により別ファイルが発生する流れ。',
-      },
-      再加工: {
-        kind: 'operation',
-        action: '戻し',
-        label: '再加工',
-        memo: '前工程へ戻す、または再処理する。',
+      例外: {
+        kind: 'memo',
+        action: '保留',
+        label: '例外対応',
+        memo: '例外時の扱いを整理する流れ。',
       },
       戻し: {
         kind: 'operation',
@@ -1290,6 +1275,12 @@ function App() {
         action: '保留',
         label: '保留メモ',
         memo: '一時停止・確認待ち・例外など。',
+      },
+      格納先A: {
+        kind: 'storage',
+        action: '格納',
+        label: '格納先A',
+        memo: '判断後の格納先。',
       },
     };
 
@@ -1320,7 +1311,7 @@ function App() {
     setSelectedEdgeId(null);
     setEditModalOpen(true);
     setConnectMode(null);
-    setStatusMessage(`分岐から「${routeLabel}」を追加しました。`);
+    setStatusMessage(`判断から「${routeLabel}」を追加しました。`);
   };
 
   const removeSelected = () => {
@@ -1510,7 +1501,7 @@ function App() {
 
     setConnectMode({
       sourceId: selectedNode.id,
-      label: selectedNode.data.kind === 'split' ? '分岐' : selectedNode.data.action,
+      label: selectedNode.data.kind === 'split' ? '判断' : selectedNode.data.action,
     });
     setEditModalOpen(false);
   };
@@ -1612,14 +1603,14 @@ function App() {
 
           {!selectedNodeCanStartRoute && (
             <p className="route-rule-message">
-              このパーツはすでに次の導線があります。途中で流れを分ける場合は「分岐」パーツを使ってください。取得元は複数の行き先へ接続できます。
+              どのパーツからも複数の導線を伸ばせます。条件や確認結果で分ける場合は「判断」パーツを使ってください。
             </p>
           )}
         </div>
 
         {selectedNode.data.kind === 'split' && (
           <div className="split-actions">
-            <p>分岐ルートを追加</p>
+            <p>判断ルートを追加</p>
             {SPLIT_ROUTE_LABELS.map((label) => (
               <button key={label} onClick={() => addSplitRoute(label)}>
                 {label}
@@ -2017,7 +2008,7 @@ function App() {
             <div>
               <strong>Route Canvas</strong>
               <span>
-                複数の取得元を同じ工程へ集約できます。途中で分ける流れは「分岐」から作成します。
+                各パーツから複数ルートを伸ばせます。条件で分ける場合は「判断」を使います。
               </span>
             </div>
 
