@@ -1671,6 +1671,8 @@ function App() {
             {tasks.map((task) => (
               <button
                 key={task.id}
+                role="tab"
+                aria-selected={task.id === activeTaskId}
                 className={`tab-button ${task.id === activeTaskId ? 'is-active' : ''}`}
                 onClick={() => switchTask(task.id)}
               >
@@ -1718,6 +1720,8 @@ function App() {
             {activeTask.files.map((file) => (
               <button
                 key={file.id}
+                role="tab"
+                aria-selected={file.id === activeFile.id}
                 className={`file-tab ${file.id === activeFile.id ? 'is-active' : ''}`}
                 onClick={() => switchFile(file.id)}
               >

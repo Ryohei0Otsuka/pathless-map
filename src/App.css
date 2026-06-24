@@ -1022,8 +1022,8 @@ button:disabled {
 
 .edit-modal-backdrop {
   position: absolute;
-  z-index: 120;
-  inset: 0;
+  z-index: 80;
+  inset: 64px 0 0;
   overflow: hidden;
   pointer-events: auto;
   background: transparent;
@@ -1575,7 +1575,7 @@ button:disabled {
   }
 
   .edit-modal-backdrop {
-    inset: 0;
+    inset: 52px 0 0;
   }
 
   .edit-modal-card {
@@ -1844,5 +1844,476 @@ button:disabled {
 
   .mobile-storage-card .storage-box p {
     font-size: 0.76rem;
+  }
+}
+
+/* === Balance pass: PC tab UI + mobile canvas-first layout === */
+html,
+body,
+#root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+#root {
+  display: block;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 1440px;
+}
+
+.hero,
+.security-strip,
+.map-control-panel,
+.route-summary-card,
+.workspace,
+.flow-card,
+.parts-panel,
+.edit-panel,
+.mobile-storage-card {
+  max-width: 100%;
+}
+
+.flow-card {
+  position: relative;
+}
+
+.edit-modal-backdrop {
+  inset: 0 !important;
+  z-index: 120;
+}
+
+@media (min-width: 721px) {
+  .app-shell {
+    padding: 18px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+
+  .map-control-panel {
+    gap: 0;
+    padding: 0 14px 14px;
+    overflow: hidden;
+  }
+
+  .control-line--task {
+    grid-template-columns: 94px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    padding: 12px 0 0;
+    border-bottom: 1px solid rgba(47, 113, 102, 0.18);
+  }
+
+  .control-line--task .control-label {
+    padding-bottom: 10px;
+  }
+
+  .control-line--task .control-tabs {
+    align-items: flex-end;
+    padding: 0;
+    overflow-x: auto;
+  }
+
+  .control-line--task .tab-button {
+    margin-bottom: -1px;
+    padding: 12px 18px 11px;
+    border-color: rgba(47, 113, 102, 0.16);
+    border-bottom-color: rgba(47, 113, 102, 0.18);
+    border-radius: 18px 18px 0 0;
+    background: rgba(241, 250, 247, 0.66);
+    box-shadow: none;
+  }
+
+  .control-line--task .tab-button.is-active {
+    color: #214340;
+    background: #ffffff;
+    border-color: rgba(47, 113, 102, 0.22);
+    border-bottom-color: #ffffff;
+    box-shadow: 0 -10px 24px rgba(48, 78, 73, 0.08);
+  }
+
+  .control-line--task .add-tab-button {
+    margin-bottom: 8px;
+  }
+
+  .control-detail-row--task {
+    grid-template-columns: minmax(180px, 260px) minmax(320px, 1fr) auto;
+    padding: 12px 0 10px;
+  }
+
+  .control-line--file {
+    grid-template-columns: 116px minmax(420px, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    margin-top: 4px;
+    padding: 12px;
+    border: 1px solid rgba(47, 113, 102, 0.14);
+    border-radius: 22px;
+    background: rgba(237, 249, 245, 0.76);
+  }
+
+  .file-space {
+    display: flex;
+    align-items: center;
+    min-height: 58px;
+    padding: 8px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.56);
+  }
+
+  .file-tab {
+    border-radius: 14px;
+    padding: 10px 16px;
+  }
+
+  .file-tab.is-active {
+    box-shadow: 0 10px 22px rgba(47, 113, 102, 0.16);
+  }
+
+  .control-detail-row--file {
+    grid-template-columns: minmax(260px, 520px) auto;
+    padding: 10px 12px 0 128px;
+  }
+
+  .desktop-route-summary {
+    max-height: 176px;
+    overflow-y: auto;
+  }
+
+  .workspace {
+    grid-template-columns: 200px minmax(0, 1fr) 280px;
+    min-height: 730px;
+  }
+
+  .flow-area {
+    height: 720px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    width: 100%;
+    max-width: none;
+    padding: 8px;
+    overflow-x: hidden;
+  }
+
+  .hero,
+  .security-strip,
+  .map-control-panel,
+  .workspace,
+  .flow-card,
+  .parts-panel,
+  .mobile-route-summary,
+  .mobile-storage-card {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .hero h1 {
+    font-size: 1.7rem;
+  }
+
+  .hero p {
+    max-width: none;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    line-height: 1.55;
+  }
+
+  .eyebrow {
+    font-size: 0.58rem;
+    letter-spacing: 0.13em;
+  }
+
+  .risk-panel {
+    padding: 9px 10px;
+    border-radius: 16px;
+  }
+
+  .risk-panel span {
+    margin-bottom: 2px;
+    font-size: 0.62rem;
+  }
+
+  .risk-panel strong {
+    font-size: 0.78rem;
+  }
+
+  .security-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    margin: 8px 0;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .security-strip span {
+    display: none;
+  }
+
+  .security-strip strong {
+    font-size: 0.82rem;
+  }
+
+  .security-strip button {
+    padding: 8px 10px;
+    font-size: 0.74rem;
+    white-space: nowrap;
+  }
+
+  .map-control-panel {
+    gap: 6px;
+    margin: 8px 0;
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .control-line,
+  .control-line--task,
+  .control-line--file {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .control-line--file {
+    margin-top: 4px;
+    padding-top: 6px;
+  }
+
+  .control-label {
+    grid-column: auto;
+    display: grid;
+    gap: 0;
+    min-width: 0;
+  }
+
+  .control-label span {
+    display: none;
+  }
+
+  .control-label strong {
+    font-size: 0.72rem;
+  }
+
+  .control-tabs,
+  .tabs-scroll,
+  .file-space {
+    min-width: 0;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .file-space {
+    min-height: 38px;
+    padding: 3px;
+    border-radius: 14px;
+  }
+
+  .tab-button,
+  .file-tab {
+    padding: 8px 10px;
+    font-size: 0.74rem;
+    white-space: nowrap;
+  }
+
+  .add-tab-button {
+    min-width: auto;
+    padding: 8px 9px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .control-detail-row,
+  .control-detail-row--task,
+  .control-detail-row--file {
+    display: none;
+  }
+
+  .desktop-route-summary {
+    display: none;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    min-height: 0;
+    margin-top: 8px;
+  }
+
+  .flow-card {
+    order: 1;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  .flow-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+  }
+
+  .flow-toolbar strong {
+    font-size: 0.92rem;
+  }
+
+  .flow-toolbar span {
+    display: none;
+  }
+
+  .flow-toolbar-actions {
+    justify-content: end;
+  }
+
+  .danger-ghost-button {
+    padding: 7px 10px;
+    font-size: 0.74rem;
+  }
+
+  .flow-area {
+    height: 62svh;
+    min-height: 440px;
+    max-height: 620px;
+  }
+
+  .parts-panel {
+    order: 2;
+    padding: 9px;
+    border-radius: 18px;
+  }
+
+  .parts-panel .panel-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: end;
+  }
+
+  .parts-panel .panel-heading p {
+    display: none;
+  }
+
+  .parts-panel .panel-heading h2 {
+    margin: 0;
+    font-size: 0.86rem;
+  }
+
+  .parts-list {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding: 4px 0 2px;
+    scroll-snap-type: x proximity;
+  }
+
+  .part-button {
+    grid-template-columns: 30px 1fr;
+    min-width: 104px;
+    max-width: 124px;
+    gap: 7px;
+    padding: 8px;
+    border-radius: 14px;
+    scroll-snap-align: start;
+  }
+
+  .part-button span {
+    width: 30px;
+    height: 28px;
+    border-radius: 10px;
+    font-size: 0.58rem;
+  }
+
+  .part-button strong {
+    font-size: 0.72rem;
+    line-height: 1.22;
+  }
+
+  .part-button small {
+    display: none;
+  }
+
+  .mobile-route-summary {
+    display: block;
+    order: 3;
+    margin: 0;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .mobile-storage-card {
+    display: block;
+    order: 4;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .mobile-card-heading p {
+    display: none;
+  }
+
+  .mobile-card-heading h2 {
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+
+  .mobile-summary-toggle span {
+    font-size: 0.86rem;
+  }
+
+  .mobile-summary-toggle strong {
+    max-width: 46vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.68rem;
+  }
+
+  .mobile-route-summary ol {
+    max-height: 160px;
+  }
+
+  .mobile-storage-card .storage-box p {
+    font-size: 0.72rem;
+  }
+
+  .edit-panel {
+    display: none;
+  }
+
+  .route-node {
+    width: 160px;
+  }
+
+  .edit-modal-backdrop {
+    inset: 0 !important;
+  }
+
+  .edit-modal-card {
+    width: min(330px, calc(100% - 20px));
+    max-height: min(500px, calc(100% - 20px));
   }
 }
