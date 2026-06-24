@@ -1,0 +1,164 @@
+/* Edit forms, node actions, split actions, insert and storage controls. */
+.empty-edit {
+  padding: 16px;
+  border-radius: 20px;
+  color: #60726f;
+  background: rgba(235, 248, 244, 0.8);
+  line-height: 1.7;
+}
+
+.edit-form {
+  display: grid;
+  gap: 12px;
+}
+
+.selected-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid rgba(70, 107, 100, 0.14);
+  border-radius: 18px;
+  background: rgba(242, 251, 248, 0.8);
+}
+
+.selected-card span {
+  color: #679188;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.selected-card strong {
+  color: #243b38;
+}
+
+.selected-card small {
+  color: #6d7f7b;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.edit-form label,
+.storage-box label,
+.insert-box label,
+.mobile-name-editor-grid label {
+  display: grid;
+  gap: 7px;
+  color: #314844;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.edit-form textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.node-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.node-actions button {
+  color: #f8fffc;
+  background: #2f7166;
+}
+
+.node-actions .secondary-inline-button {
+  border: 1px solid rgba(47, 113, 102, 0.18);
+  color: #2f514b;
+  background: #e6f7f1;
+}
+
+.node-actions .danger-inline-button {
+  color: #7b3529;
+  background: rgba(255, 239, 232, 0.9);
+}
+
+.route-rule-message {
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(92, 73, 122, 0.18);
+  border-radius: 16px;
+  color: #5a4b72;
+  background: rgba(248, 244, 255, 0.8);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.split-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed rgba(92, 73, 122, 0.24);
+  border-radius: 18px;
+  background: rgba(248, 244, 255, 0.8);
+}
+
+.split-actions p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #5a4b72;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.split-actions button {
+  padding: 10px 8px;
+  color: #4a3d61;
+  background: #ffffff;
+}
+
+.insert-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed rgba(47, 113, 102, 0.24);
+  border-radius: 18px;
+  background: rgba(230, 247, 241, 0.72);
+}
+
+.insert-box p {
+  margin: 0;
+  color: #2f514b;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.insert-box button {
+  color: #f8fffc;
+  background: #2f7166;
+}
+
+.storage-box {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(70, 107, 100, 0.14);
+}
+
+.storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.storage-actions button {
+  flex: 1;
+}
+
+.storage-actions .danger-button {
+  color: #82382b;
+  background: #ffe2d8;
+}
+
+.storage-box p {
+  margin: 0;
+  color: #657873;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}

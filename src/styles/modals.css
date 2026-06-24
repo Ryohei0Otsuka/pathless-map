@@ -1,0 +1,166 @@
+/* Startup notice and edit modal base styles. */
+.notice-backdrop {
+  position: fixed;
+  z-index: 11000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100dvh;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(18, 38, 35, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.notice-card {
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top left, rgba(219, 249, 240, 0.95), transparent 22rem),
+    #ffffff;
+  box-shadow: 0 28px 80px rgba(18, 38, 35, 0.25);
+}
+
+.notice-kicker {
+  margin: 0 0 8px;
+  color: #4c8278;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.notice-card h1 {
+  margin: 0 0 10px;
+  color: #203a37;
+  font-size: clamp(1.45rem, 6vw, 2.3rem);
+}
+
+.notice-card p {
+  margin: 0 0 14px;
+  color: #556d69;
+  line-height: 1.8;
+}
+
+.notice-ng,
+.notice-ok {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.notice-ng {
+  color: #743025;
+  background: #fff0ea;
+}
+
+.notice-ok {
+  color: #27544d;
+  background: #e5f8f2;
+}
+
+.edit-modal-backdrop {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100dvh;
+  padding: 10px;
+  overflow: hidden;
+  pointer-events: auto;
+  background: rgba(18, 38, 35, 0.16);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.edit-modal-card {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  width: min(520px, calc(100vw - 28px));
+  max-height: min(540px, calc(100dvh - 28px));
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(219, 249, 240, 0.95), transparent 22rem),
+    #ffffff;
+  box-shadow: 0 28px 80px rgba(18, 38, 35, 0.26);
+  pointer-events: auto;
+}
+
+.edit-modal-card::after {
+  display: none;
+}
+
+.edit-modal-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 0 0 10px;
+  padding: 18px 18px 10px;
+  background:
+    radial-gradient(circle at top left, rgba(219, 249, 240, 0.96), transparent 18rem),
+    #ffffff;
+}
+
+.edit-modal-heading h2 {
+  font-size: 1.2rem;
+}
+
+.modal-close-button {
+  display: grid;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  color: #31534d;
+  background: #e6f3ef;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.edit-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 18px 18px;
+}
+
+.mobile-route-summary,
+.mobile-storage-card,
+.mobile-name-editor {
+  display: none;
+}
+
+.mobile-summary-toggle {
+  list-style: none;
+}
+
+.mobile-summary-toggle::-webkit-details-marker,
+.mobile-name-editor summary::-webkit-details-marker {
+  display: none;
+}

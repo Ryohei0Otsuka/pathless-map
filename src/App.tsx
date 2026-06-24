@@ -23,7 +23,7 @@ import {
   type NodeTypes,
   type OnConnect,
 } from '@xyflow/react';
-import './App.css';
+import './styles/index.css';
 
 type NodeKind =
   | 'source'

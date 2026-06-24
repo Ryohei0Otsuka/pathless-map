@@ -1,0 +1,227 @@
+/* Base reset, typography, hero, notices, common buttons. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  color: #203a37;
+  background: #f2faf7;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(209, 246, 236, 0.9), transparent 32rem),
+    linear-gradient(180deg, #f8fffc 0%, #edf7f4 100%);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.hero,
+.security-strip,
+.warning-box,
+.map-control-panel,
+.route-summary-card,
+.connect-hint,
+.parts-panel,
+.flow-card,
+.edit-panel,
+.mobile-storage-card {
+  max-width: 100%;
+  border: 1px solid rgba(72, 108, 101, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 18px 48px rgba(48, 78, 73, 0.09);
+}
+
+.hero,
+.map-control-panel,
+.parts-panel,
+.flow-card,
+.edit-panel,
+.route-summary-card,
+.mobile-storage-card {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(242, 251, 248, 0.74)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(85, 128, 119, 0.05) 0,
+      rgba(85, 128, 119, 0.05) 1px,
+      transparent 1px,
+      transparent 28px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(85, 128, 119, 0.04) 0,
+      rgba(85, 128, 119, 0.04) 1px,
+      transparent 1px,
+      transparent 28px
+    );
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #4f7f77;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  color: #203a37;
+  font-size: clamp(1.7rem, 5vw, 3.35rem);
+  line-height: 1.05;
+}
+
+.hero p {
+  max-width: 800px;
+  margin: 12px 0 0;
+  color: #526966;
+  line-height: 1.8;
+}
+
+.risk-panel {
+  min-width: 190px;
+  padding: 16px;
+  border-radius: 24px;
+  text-align: center;
+}
+
+.risk-panel span,
+.risk-panel strong {
+  display: block;
+}
+
+.risk-panel span {
+  margin-bottom: 4px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.risk-panel strong {
+  font-size: 0.95rem;
+}
+
+.risk-panel.safe {
+  color: #27544d;
+  background: #dcf7ed;
+  border: 1px solid rgba(59, 131, 115, 0.24);
+}
+
+.risk-panel.danger {
+  color: #7b3126;
+  background: #ffe5dc;
+  border: 1px solid rgba(191, 83, 54, 0.28);
+}
+
+.security-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  margin: 14px 0;
+  padding: 14px 16px;
+  border-radius: 22px;
+  background: rgba(243, 252, 249, 0.82);
+}
+
+.security-strip div {
+  display: grid;
+  gap: 4px;
+}
+
+.security-strip strong {
+  color: #244340;
+}
+
+.security-strip span {
+  color: #5d706c;
+  font-size: 0.92rem;
+}
+
+.security-strip button,
+.storage-actions button,
+.primary-button,
+.add-tab-button,
+.node-actions button,
+.split-actions button,
+.insert-box button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: #214340;
+  background: #d9f0ea;
+  font-weight: 850;
+}
+
+.primary-button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px 18px;
+  color: #f8fffc;
+  background: #2f7166;
+}
+
+.warning-box {
+  margin: 14px 0;
+  padding: 16px;
+  border-radius: 22px;
+  color: #743025;
+  background: #fff1eb;
+}
+
+.warning-box ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
