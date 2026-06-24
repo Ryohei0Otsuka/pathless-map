@@ -1727,7 +1727,7 @@ function App() {
               title="現在のタスクを削除"
             >
               <span className="delete-button-mark" aria-hidden="true">×</span>
-              <span className="delete-button-label">Task</span>
+              <span className="delete-button-label">タスク</span>
             </button>
           </div>
         </div>
@@ -1787,7 +1787,7 @@ function App() {
               title="現在のファイル導線を削除"
             >
               <span className="delete-button-mark" aria-hidden="true">×</span>
-              <span className="delete-button-label">File</span>
+              <span className="delete-button-label">ファイル</span>
             </button>
           </div>
         </div>
