@@ -3221,3 +3221,171 @@ body {
     display: none;
   }
 }
+
+/* === Final SP usability fix: name editor + centered modal ===
+   SP版では詳細行を畳んでも、タスク名/ファイル名は編集できるようにする。
+   編集モーダルはタップ位置追従をやめ、画面中央に安定表示する。 */
+.mobile-name-editor {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .mobile-name-editor {
+    display: block;
+    margin-top: 8px;
+    border: 1px solid rgba(67, 112, 103, 0.14);
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(240, 250, 246, 0.46));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.74),
+      0 10px 22px rgba(48, 78, 73, 0.06);
+    overflow: hidden;
+  }
+
+  .mobile-name-editor summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    min-height: 40px;
+    padding: 10px 12px;
+    color: #315c55;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .mobile-name-editor summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-name-editor summary::after {
+    justify-self: end;
+    color: #6f8a84;
+    content: "開く";
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .mobile-name-editor[open] summary::after {
+    content: "閉じる";
+  }
+
+  .mobile-name-editor summary span {
+    padding: 5px 8px;
+    border-radius: 999px;
+    color: #f8fffc;
+    background: rgba(47, 113, 102, 0.9);
+    font-size: 0.72rem;
+    font-weight: 950;
+    white-space: nowrap;
+  }
+
+  .mobile-name-editor summary strong {
+    min-width: 0;
+    overflow: hidden;
+    color: #2e4f49;
+    font-size: 0.82rem;
+    font-weight: 900;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-name-editor-grid {
+    display: grid;
+    gap: 9px;
+    padding: 0 10px 10px;
+  }
+
+  .mobile-name-editor-grid label {
+    display: grid;
+    gap: 5px;
+    color: #314844;
+    font-size: 0.78rem;
+    font-weight: 850;
+  }
+
+  .mobile-name-editor-grid input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(70, 107, 100, 0.18);
+    border-radius: 13px;
+    padding: 9px 10px;
+    color: #203033;
+    background: rgba(250, 255, 253, 0.9);
+    outline: none;
+  }
+
+  .mobile-name-editor-grid input:focus {
+    border-color: rgba(47, 113, 102, 0.48);
+    box-shadow: 0 0 0 4px rgba(47, 113, 102, 0.12);
+  }
+
+  .edit-modal-backdrop {
+    position: fixed !important;
+    z-index: 10000 !important;
+    inset: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 10px !important;
+    overflow: hidden !important;
+    pointer-events: auto !important;
+    background: rgba(18, 38, 35, 0.24) !important;
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+  }
+
+  .edit-modal-card {
+    position: relative !important;
+    inset: auto !important;
+    left: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(360px, calc(100vw - 20px)) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    border-radius: 22px !important;
+  }
+
+  .edit-modal-card[data-placement='below'],
+  .edit-modal-card[data-placement='above'] {
+    transform: none !important;
+  }
+
+  .edit-modal-card::after {
+    display: none !important;
+  }
+
+  .edit-modal-heading {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
+    flex: 0 0 auto;
+    margin: 0 0 10px !important;
+    padding-bottom: 10px !important;
+    background:
+      radial-gradient(circle at top left, rgba(219, 249, 240, 0.96), transparent 18rem),
+      #ffffff !important;
+  }
+
+  .edit-modal-body {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 2px;
+  }
+
+  .edit-modal-body textarea {
+    max-height: 118px;
+  }
+}

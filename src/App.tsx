@@ -698,19 +698,9 @@ function App() {
     const isMobile = window.matchMedia('(max-width: 720px)').matches;
 
     if (isMobile) {
-      const margin = 10;
-      const width = Math.min(360, Math.max(280, viewportWidth - margin * 2));
-      const maxHeight = Math.max(320, viewportHeight - margin * 2);
-      const left = viewportLeft + Math.max(margin, (viewportWidth - width) / 2);
-      const top = viewportTop + margin;
-
-      setEditModalAnchor({
-        x: left,
-        y: top,
-        width,
-        maxHeight,
-        placement: 'below',
-      });
+      // SP版はタップ座標へ寄せるより、画面中央に安定表示する。
+      // 位置はCSS側で中央固定にするため、インライン座標は渡さない。
+      setEditModalAnchor(null);
       setEditModalOpen(true);
       return;
     }
@@ -1806,6 +1796,42 @@ function App() {
             ファイル導線削除
           </button>
         </div>
+
+        <details className="mobile-name-editor">
+          <summary>
+            <span>名前編集</span>
+            <strong>{activeTask.title} / {activeFile.label}</strong>
+          </summary>
+
+          <div className="mobile-name-editor-grid">
+            <label>
+              タスク名
+              <input
+                value={activeTask.title}
+                onChange={(event) => updateActiveTask({ title: event.target.value })}
+                placeholder="例：日次処理"
+              />
+            </label>
+
+            <label>
+              タスクメモ
+              <input
+                value={activeTask.summary}
+                onChange={(event) => updateActiveTask({ summary: event.target.value })}
+                placeholder="このタスクで整理するファイルの流れ"
+              />
+            </label>
+
+            <label>
+              ファイル導線名
+              <input
+                value={activeFile.label}
+                onChange={(event) => renameActiveFile(event.target.value)}
+                placeholder="例：ファイル種別A"
+              />
+            </label>
+          </div>
+        </details>
       </section>
 
       <section className="route-summary-card desktop-route-summary">
