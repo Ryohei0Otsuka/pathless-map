@@ -101,6 +101,8 @@ type ConnectMode = {
 type EditModalAnchor = {
   x: number;
   y: number;
+  width: number;
+  maxHeight: number;
   placement: 'above' | 'below';
 };
 
@@ -696,17 +698,34 @@ function App() {
       return;
     }
 
-    const preferredWidth = cardRect.width <= 520 ? 340 : 520;
-    const horizontalMargin = Math.min(preferredWidth / 2 + 12, cardRect.width / 2);
+    const margin = 12;
+    const gap = 12;
     const rawX = event.clientX - cardRect.left;
     const rawY = event.clientY - cardRect.top;
-    const minX = horizontalMargin;
-    const maxX = Math.max(horizontalMargin, cardRect.width - horizontalMargin);
-    const x = Math.min(Math.max(rawX, minX), maxX);
-    const y = Math.min(Math.max(rawY, 72), Math.max(72, cardRect.height - 24));
-    const placement = y < 330 ? 'below' : 'above';
+    const isMobile = cardRect.width <= 720;
+    const width = Math.max(
+      260,
+      Math.min(isMobile ? 320 : 440, cardRect.width - margin * 2),
+    );
+    const maxHeight = Math.max(
+      260,
+      Math.min(isMobile ? 360 : 440, cardRect.height - margin * 2),
+    );
 
-    setEditModalAnchor({ x, y, placement });
+    const left = Math.min(
+      Math.max(rawX - width / 2, margin),
+      Math.max(margin, cardRect.width - width - margin),
+    );
+
+    const canShowAbove = rawY - maxHeight - gap >= margin;
+    const placement: EditModalAnchor['placement'] = canShowAbove ? 'above' : 'below';
+    const preferredTop = canShowAbove ? rawY - maxHeight - gap : rawY + gap;
+    const top = Math.min(
+      Math.max(preferredTop, margin),
+      Math.max(margin, cardRect.height - maxHeight - margin),
+    );
+
+    setEditModalAnchor({ x: left, y: top, width, maxHeight, placement });
     setEditModalOpen(true);
   };
 
@@ -1851,6 +1870,12 @@ function App() {
                 setSelectedEdgeId(null);
                 setConnectMode(null);
               }}
+              panOnDrag
+              panOnScroll={false}
+              zoomOnPinch
+              zoomOnDoubleClick={false}
+              preventScrolling
+              selectionOnDrag={false}
               fitView
             >
               <Background color="#bfd5cf" gap={24} />
@@ -1871,7 +1896,12 @@ function App() {
                   data-placement={editModalAnchor?.placement ?? 'above'}
                   style={
                     editModalAnchor
-                      ? { left: `${editModalAnchor.x}px`, top: `${editModalAnchor.y}px` }
+                      ? {
+                          left: `${editModalAnchor.x}px`,
+                          top: `${editModalAnchor.y}px`,
+                          width: `${editModalAnchor.width}px`,
+                          maxHeight: `${editModalAnchor.maxHeight}px`,
+                        }
                       : undefined
                   }
                   onClick={(event) => event.stopPropagation()}

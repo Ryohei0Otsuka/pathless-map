@@ -2317,3 +2317,107 @@ body,
     max-height: min(500px, calc(100% - 20px));
   }
 }
+
+/* Final modal containment fix: keep the editor inside Route Canvas without clipping. */
+.flow-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-modal-backdrop {
+  position: absolute !important;
+  z-index: 500 !important;
+  inset: 0 !important;
+  overflow: hidden !important;
+  pointer-events: auto;
+  background: transparent;
+}
+
+.edit-modal-card {
+  position: absolute !important;
+  transform: none !important;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.edit-modal-card[data-placement='below'],
+.edit-modal-card[data-placement='above'] {
+  transform: none !important;
+}
+
+.edit-modal-card::after {
+  display: none;
+}
+
+.edit-modal-body {
+  min-height: 0;
+}
+
+@media (max-width: 720px) {
+  .edit-modal-card {
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .edit-modal-heading {
+    position: sticky;
+    top: -14px;
+    z-index: 2;
+    margin: -14px -14px 12px;
+    padding: 14px;
+    border-bottom: 1px solid rgba(70, 107, 100, 0.12);
+    border-radius: 22px 22px 0 0;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .edit-modal-body .edit-form {
+    gap: 9px;
+  }
+
+  .edit-modal-body textarea {
+    max-height: 110px;
+  }
+}
+
+/* SP pan fix: keep Route Canvas movable on touch devices. */
+.flow-area,
+.flow-area .react-flow,
+.flow-area .react-flow__renderer,
+.flow-area .react-flow__pane,
+.flow-area .react-flow__viewport {
+  touch-action: none;
+}
+
+.flow-area .react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+.edit-modal-backdrop {
+  pointer-events: none !important;
+}
+
+.edit-modal-card {
+  pointer-events: auto !important;
+}
+
+@media (max-width: 720px) {
+  .flow-area {
+    height: 72svh !important;
+    min-height: 540px !important;
+    overflow: hidden !important;
+    overscroll-behavior: contain;
+  }
+
+  .flow-area .react-flow__pane {
+    cursor: grab;
+  }
+
+  .flow-area .react-flow__pane:active {
+    cursor: grabbing;
+  }
+}
